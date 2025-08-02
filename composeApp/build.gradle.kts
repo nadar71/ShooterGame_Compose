@@ -56,11 +56,11 @@ kotlin {
 }
 
 android {
-    namespace = "com.stevdza_san.game"
+    namespace = "com.indiewalkabout.game"
     compileSdk = libs.versions.android.compileSdk.get().toInt()
 
     defaultConfig {
-        applicationId = "com.stevdza_san.game"
+        applicationId = "com.indiewalkabout.game"
         minSdk = libs.versions.android.minSdk.get().toInt()
         targetSdk = libs.versions.android.targetSdk.get().toInt()
         versionCode = 1
