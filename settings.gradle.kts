@@ -1,4 +1,4 @@
-rootProject.name = "NinjaBubble"
+rootProject.name = "CosmoRaiders"
 enableFeaturePreview("TYPESAFE_PROJECT_ACCESSORS")
 
 pluginManagement {
