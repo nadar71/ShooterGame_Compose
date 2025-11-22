@@ -1,4 +1,4 @@
-package com.indiewalkabout.cosmoraiders
+package com.indiewalkabout.cosmoraiders.presentation
 
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.tween
@@ -6,6 +6,8 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -16,6 +18,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -28,6 +31,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.withFrameMillis
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -35,12 +39,14 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.indiewalkabout.cosmoraiders.domain.Game
 import com.indiewalkabout.cosmoraiders.domain.GameSettings
-import com.indiewalkabout.cosmoraiders.domain.GameStatus
+import com.indiewalkabout.cosmoraiders.domain.GameState
 import com.indiewalkabout.cosmoraiders.domain.MoveDirection
 import com.indiewalkabout.cosmoraiders.domain.Weapon
 import com.indiewalkabout.cosmoraiders.domain.audio.AudioPlayer
@@ -75,7 +81,7 @@ const val WEAPON_SIZE = 32f
 const val TARGET_SPAWN_RATE = 1500L
 const val TARGET_SIZE = 40f
 
-@Composable
+/*@Composable
 fun MainScreen() {
     val scope = rememberCoroutineScope()
     val audio = koinInject<AudioPlayer>()
@@ -437,6 +443,292 @@ fun MainScreen() {
             ) {
                 Text(text = "Play again")
             }
+        }
+    }
+}*/
+
+@Composable
+fun MainScreen(
+    viewModel: GameViewModel = remember { GameViewModel(AudioPlayer()) }
+) {
+    val gameState by viewModel.gameState.collectAsState()
+    val scope = rememberCoroutineScope()
+
+    // Handle game state changes
+    LaunchedEffect(gameState) {
+        when (gameState) {
+            is GameState.Idle -> { /* Show main menu */ }
+            is GameState.Playing -> {
+                if ((gameState as GameState.Playing).isPaused) {
+                    // Handle pause
+                } else {
+                    // Resume game
+                }
+            }
+            is GameState.LevelComplete -> { /* Show level complete screen */ }
+            is GameState.GameOver -> { /* Show game over screen */ }
+        }
+    }
+
+    // Game loop
+    val frameTimeNanos = remember { System.nanoTime() }
+    var lastFrameTime by remember { mutableStateOf(frameTimeNanos) }
+
+    LaunchedEffect(Unit) {
+        while (true) {
+            withFrameNanos { frameTime ->
+                val deltaTime = (frameTime - lastFrameTime) / 1_000_000_000f
+                lastFrameTime = frameTime
+                if (gameState is GameState.Playing && !(gameState as GameState.Playing).isPaused) {
+                    viewModel.update(deltaTime)
+                }
+            }
+        }
+    }
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color.Black)
+            .pointerInput(Unit) {
+                detectTapGestures { offset ->
+                    viewModel.fireWeapon()
+                }
+            },
+        contentAlignment = Alignment.Center
+    ) {
+        // Game canvas
+        GameCanvas(viewModel = viewModel)
+
+        // UI Overlay
+        when (val state = gameState) {
+            is GameState.Idle -> MainMenu(
+                onStartClick = { viewModel.startGame() }
+            )
+            is GameState.Playing -> {
+                if (state.isPaused) {
+                    PauseMenu(
+                        onResume = { viewModel.resumeGame() },
+                        onQuit = { viewModel.endGame() }
+                    )
+                } else {
+                    GameHUD(
+                        score = state.score,
+                        level = state.level,
+                        lives = state.lives,
+                        onPause = { viewModel.pauseGame() }
+                    )
+                }
+            }
+            is GameState.LevelComplete -> LevelCompleteScreen(
+                level = state.level,
+                score = state.score,
+                onNextLevel = { viewModel.startNextLevel() }
+            )
+            is GameState.GameOver -> GameOverScreen(
+                score = state.finalScore,
+                highScore = state.highScore,
+                levelReached = state.levelReached,
+                onRestart = { viewModel.startGame() }
+            )
+        }
+    }
+}
+
+@Composable
+private fun GameCanvas(
+    viewModel: GameViewModel,
+    modifier: Modifier = Modifier
+) {
+    Canvas(
+        modifier = modifier
+            .fillMaxSize()
+            .onGloballyPositioned { coordinates ->
+                viewModel.screenWidth = with(LocalDensity.current) { coordinates.size.width.toDp() }
+                viewModel.screenHeight = with(LocalDensity.current) { coordinates.size.height.toDp() }
+            }
+            .pointerInput(Unit) {
+                detectDragGestures { change, _ ->
+                    viewModel.ninjaPosition = change.position
+                }
+            }
+    ) {
+        // Draw ninja (player)
+        drawCircle(
+            color = Color.Blue,
+            radius = 30f,
+            center = viewModel.ninjaPosition
+        )
+
+        // Draw weapon if exists
+        viewModel.weapon?.let { weapon ->
+            drawCircle(
+                color = Color.Red,
+                radius = weapon.radius,
+                center = Offset(weapon.x, weapon.y)
+            )
+        }
+
+        // Draw targets
+        viewModel.targets.forEach { target ->
+            drawCircle(
+                color = target.color,
+                radius = target.radius,
+                center = Offset(target.x, target.y.value)
+            )
+        }
+    }
+}
+
+@Composable
+private fun MainMenu(
+    onStartClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier.fillMaxSize(),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        Text(
+            text = "NINJA BUBBLE",
+            style = MaterialTheme.typography.headlineLarge,
+            color = Color.White,
+            fontWeight = FontWeight.Bold
+        )
+        Spacer(modifier = Modifier.height(32.dp))
+        Button(
+            onClick = onStartClick,
+            colors = ButtonDefaults.buttonColors(containerColor = Color.Red)
+        ) {
+            Text("START GAME")
+        }
+    }
+}
+
+@Composable
+private fun GameHUD(
+    score: Int,
+    level: Int,
+    lives: Int,
+    onPause: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier
+            .fillMaxSize()
+            .padding(16.dp)
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Text("SCORE: $score", color = Color.White)
+            Text("LEVEL: $level", color = Color.White)
+            Text("LIVES: $lives", color = Color.White)
+        }
+
+        Spacer(modifier = Modifier.weight(1f))
+
+        Button(
+            onClick = onPause,
+            modifier = Modifier.align(Alignment.End)
+        ) {
+            Text("PAUSE")
+        }
+    }
+}
+
+@Composable
+private fun PauseMenu(
+    onResume: () -> Unit,
+    onQuit: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier
+            .fillMaxSize()
+            .background(Color.Black.copy(alpha = 0.7f)),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        Text(
+            text = "PAUSED",
+            style = MaterialTheme.typography.headlineMedium,
+            color = Color.White
+        )
+        Spacer(modifier = Modifier.height(32.dp))
+        Button(onClick = onResume) {
+            Text("RESUME")
+        }
+        Spacer(modifier = Modifier.height(16.dp))
+        Button(onClick = onQuit) {
+            Text("QUIT GAME")
+        }
+    }
+}
+
+@Composable
+private fun LevelCompleteScreen(
+    level: Int,
+    score: Int,
+    onNextLevel: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier
+            .fillMaxSize()
+            .background(Color.Black.copy(alpha = 0.8f)),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        Text(
+            text = "LEVEL $level COMPLETE!",
+            style = MaterialTheme.typography.headlineMedium,
+            color = Color.Green
+        )
+        Spacer(modifier = Modifier.height(16.dp))
+        Text("Score: $score", color = Color.White)
+        Spacer(modifier = Modifier.height(32.dp))
+        Button(onClick = onNextLevel) {
+            Text("NEXT LEVEL")
+        }
+    }
+}
+
+@Composable
+private fun GameOverScreen(
+    score: Int,
+    highScore: Int?,
+    levelReached: Int,
+    onRestart: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier
+            .fillMaxSize()
+            .background(Color.Black.copy(alpha = 0.9f)),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        Text(
+            text = "GAME OVER",
+            style = MaterialTheme.typography.headlineLarge,
+            color = Color.Red,
+            fontWeight = FontWeight.Bold
+        )
+        Spacer(modifier = Modifier.height(24.dp))
+        Text("Final Score: $score", color = Color.White, fontSize = 24.sp)
+        highScore?.let {
+            Text("High Score: $it", color = Color.Yellow, fontSize = 20.sp)
+        }
+        Text("Level Reached: $levelReached", color = Color.White, fontSize = 20.sp)
+        Spacer(modifier = Modifier.height(32.dp))
+        Button(
+            onClick = onRestart,
+            colors = ButtonDefaults.buttonColors(containerColor = Color.Green)
+        ) {
+            Text("PLAY AGAIN", style = MaterialTheme.typography.titleMedium)
         }
     }
 }
