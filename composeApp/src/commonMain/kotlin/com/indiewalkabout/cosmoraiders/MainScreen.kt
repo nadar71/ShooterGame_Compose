@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -32,14 +33,18 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.key.Key.Companion.R
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import com.indiewalkabout.cosmoraiders.domain.Difficulty
 import com.indiewalkabout.cosmoraiders.domain.Game
 import com.indiewalkabout.cosmoraiders.domain.GameSettings
+import com.indiewalkabout.cosmoraiders.domain.GameState
 import com.indiewalkabout.cosmoraiders.domain.GameStatus
 import com.indiewalkabout.cosmoraiders.domain.MoveDirection
 import com.indiewalkabout.cosmoraiders.domain.Weapon
@@ -57,6 +62,7 @@ import com.stevdza_san.sprite.domain.SpriteSpec
 import com.stevdza_san.sprite.domain.rememberSpriteState
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import cosmoraiders.composeapp.generated.resources.Res
 import cosmoraiders.composeapp.generated.resources.background
@@ -66,8 +72,11 @@ import cosmoraiders.composeapp.generated.resources.standing_ninja
 import org.jetbrains.compose.resources.imageResource
 import org.jetbrains.compose.resources.painterResource
 import org.koin.compose.koinInject
+import kotlin.math.absoluteValue
+import kotlin.math.roundToInt
 import kotlin.math.sqrt
 
+// Game constants
 const val NINJA_FRAME_WIDTH = 253
 const val NINJA_FRAME_HEIGHT = 303
 const val WEAPON_SPAWN_RATE = 150L
@@ -79,28 +88,53 @@ const val TARGET_SIZE = 40f
 fun MainScreen() {
     val scope = rememberCoroutineScope()
     val audio = koinInject<AudioPlayer>()
-    var game by remember { mutableStateOf(Game()) }
+    
+    // Game state management
+    val game = remember { Game() }
+    val stateManager = game.gameStateManager
+    val currentState by stateManager.currentState.collectAsState()
+    
+    // Game objects
     val weapons = remember { mutableStateListOf<Weapon>() }
     val targets = remember { mutableStateListOf<Target>() }
     var moveDirection by remember { mutableStateOf(MoveDirection.None) }
-    var screenWidth by remember { mutableStateOf(0) }
-    var screenHeight by remember { mutableStateOf(0) }
-
-    // Update difficulty levels
-    LaunchedEffect(game.score) {
-        levels
-            .filter { it.first.score == game.score }
-            .takeIf { it.isNotEmpty() }
-            ?.forEach { (_, nextLevel) ->
-                game = game.copy(
-                    settings = GameSettings(
-                        ninjaSpeed = game.settings.ninjaSpeed + nextLevel.ninjaSpeed,
-                        weaponSpeed = game.settings.weaponSpeed + nextLevel.weaponSpeed,
-                        targetSpeed = game.settings.targetSpeed + nextLevel.targetSpeed,
-                    )
-                )
+    var screenSize by remember { mutableStateOf(Offset.Zero) }
+    
+    // Sprite states
+    val ninjaSpriteState = rememberSpriteState(
+        spriteSheet = SpriteSheet(
+            image = painterResource(R.drawable.run_sprite),
+            framesInRow = 5,
+            frameWidth = NINJA_FRAME_WIDTH,
+            frameHeight = NINJA_FRAME_HEIGHT
+        ),
+        frameDuration = 100L,
+        isPlaying = true
+    )
+    
+    // Handle game state changes
+    LaunchedEffect(Unit) {
+        stateManager.currentState.collectLatest { state ->
+            when (state) {
+                is GameState.Playing -> {
+                    // Start game loop when game is playing
+                    // (Game loop implementation will go here)
+                }
+                is GameState.GameOver -> {
+                    // Handle game over
+                    weapons.clear()
+                    targets.clear()
+                }
+                is GameState.LevelComplete -> {
+                    // Handle level complete
+                    weapons.clear()
+                    targets.clear()
+                }
+                else -> { /* Other states */ }
             }
+        }
     }
+
 
     val runningSprite = rememberSpriteState(
         totalFrames = 9,
