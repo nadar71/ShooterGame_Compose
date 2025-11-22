@@ -90,27 +90,22 @@ fun MainScreen() {
     val audio = koinInject<AudioPlayer>()
     
     // Game state management
-    val game = remember { Game() }
+    var game = remember { Game() }
     val stateManager = game.gameStateManager
     val currentState by stateManager.currentState.collectAsState()
+    
+    // Screen dimensions
+    var screenWidth by remember { mutableStateOf(0) }
+    var screenHeight by remember { mutableStateOf(0) }
     
     // Game objects
     val weapons = remember { mutableStateListOf<Weapon>() }
     val targets = remember { mutableStateListOf<Target>() }
     var moveDirection by remember { mutableStateOf(MoveDirection.None) }
-    var screenSize by remember { mutableStateOf(Offset.Zero) }
     
     // Sprite states
-    val ninjaSpriteState = rememberSpriteState(
-        spriteSheet = SpriteSheet(
-            image = painterResource(R.drawable.run_sprite),
-            framesInRow = 5,
-            frameWidth = NINJA_FRAME_WIDTH,
-            frameHeight = NINJA_FRAME_HEIGHT
-        ),
-        frameDuration = 100L,
-        isPlaying = true
-    )
+    // This seems to be an unused sprite state, we can remove it
+    // as we're using runningSprite and standingSprite below
     
     // Handle game state changes
     LaunchedEffect(Unit) {
@@ -138,11 +133,13 @@ fun MainScreen() {
 
     val runningSprite = rememberSpriteState(
         totalFrames = 9,
-        framesPerRow = 3
+        framesPerRow = 3,
+        animationSpeed = 100L
     )
     val standingSprite = rememberSpriteState(
         totalFrames = 1,
-        framesPerRow = 1
+        framesPerRow = 1,
+        animationSpeed = 100L
     )
     val currentRunningFrame by runningSprite.currentFrame.collectAsState()
     val currentStandingFrame by standingSprite.currentFrame.collectAsState()
@@ -178,8 +175,8 @@ fun MainScreen() {
     }
 
     // Spawn the Weapons
-    LaunchedEffect(isRunning, game.status) {
-        while (isRunning && game.status == GameStatus.Started) {
+    LaunchedEffect(isRunning, currentState) {
+        while (isRunning && currentState is GameState.Playing) {
             delay(WEAPON_SPAWN_RATE)
             weapons.add(
                 Weapon(
@@ -193,8 +190,8 @@ fun MainScreen() {
     }
 
     // Spawn the Targets
-    LaunchedEffect(game.status) {
-        while (game.status == GameStatus.Started) {
+    LaunchedEffect(currentState) {
+        while (currentState is GameState.Playing) {
             delay(TARGET_SPAWN_RATE)
             val randomX = (0..screenWidth).random()
             val isEven = (randomX % 2 == 0)
@@ -230,8 +227,8 @@ fun MainScreen() {
     }
 
     // Move Weapons & Targets and add Collision Detection
-    LaunchedEffect(game.status) {
-        while (game.status == GameStatus.Started) {
+    LaunchedEffect(currentState) {
+        while (currentState is GameState.Playing) {
             withFrameMillis {
                 targets.forEach { target ->
                     scope.launch(Dispatchers.Main) {
@@ -296,9 +293,7 @@ fun MainScreen() {
                     it.y.value > screenHeight
                 }
                 if(offScreenTarget != null) {
-                    game = game.copy(
-                        status = GameStatus.Over
-                    )
+                    stateManager.gameOver()
                     runningSprite.stop()
                     weapons.removeAll { true }
                     targets.removeAll { true }
@@ -314,10 +309,10 @@ fun MainScreen() {
                 screenWidth = it.size.width
                 screenHeight = it.size.height
             }
-            .pointerInput(Unit) {
+            .pointerInput(currentState) {
                 awaitPointerEventScope {
                     detectMoveGesture(
-                        gameStatus = game.status,
+                        gameStatus = if (currentState is GameState.Playing) GameStatus.Started else GameStatus.Idle,
                         onLeft = {
                             moveDirection = MoveDirection.Left
                             runningSprite.start()
@@ -412,7 +407,7 @@ fun MainScreen() {
         )
     }
 
-    if (game.status == GameStatus.Idle) {
+if (currentState is GameState.MainMenu) {
         Column(
             modifier = Modifier
                 .clickable(enabled = false) { }
@@ -430,7 +425,7 @@ fun MainScreen() {
             Spacer(modifier = Modifier.height(24.dp))
             Button(
                 onClick = {
-                    game = game.copy(status = GameStatus.Started)
+                    stateManager.startNewGame()
                 }
             ) {
                 Text(text = "Start")
@@ -438,7 +433,7 @@ fun MainScreen() {
         }
     }
 
-    if (game.status == GameStatus.Over) {
+if (currentState is GameState.GameOver) {
         Column(
             modifier = Modifier
                 .clickable(enabled = false) { }
@@ -462,11 +457,8 @@ fun MainScreen() {
             Spacer(modifier = Modifier.height(24.dp))
             Button(
                 onClick = {
-                    game = game.copy(
-                        score = 0,
-                        status = GameStatus.Started,
-                        settings = GameSettings()
-                    )
+                    stateManager.resetGame()
+                    stateManager.startNewGame()
                 }
             ) {
                 Text(text = "Play again")
