@@ -1,4 +1,4 @@
-package com.indiewalkabout.cosmoraiders.domain
+package com.indiewalkabout.cosmoraiders.domain.game
 
 // different game states
 sealed class GameState {

@@ -1,7 +1,7 @@
 package com.indiewalkabout.cosmoraiders.util
 
 import androidx.compose.ui.input.pointer.AwaitPointerEventScope
-import com.indiewalkabout.cosmoraiders.domain.GameStatus
+import com.indiewalkabout.cosmoraiders.domain.game.GameStatus
 
 suspend fun AwaitPointerEventScope.detectMoveGesture(
     gameStatus: GameStatus,

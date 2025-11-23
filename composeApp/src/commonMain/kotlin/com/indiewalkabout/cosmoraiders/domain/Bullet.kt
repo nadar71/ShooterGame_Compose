@@ -1,6 +1,6 @@
 package com.indiewalkabout.cosmoraiders.domain
 
-data class Weapon(
+data class Bullet(
     val x: Float = 0f,
     var y: Float = 0f,
     val radius: Float = 0f,
