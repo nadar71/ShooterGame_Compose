@@ -1,14 +1,22 @@
 package com.indiewalkabout.cosmoraiders.domain.game
 
 import com.indiewalkabout.cosmoraiders.domain.enemy.Enemy
+import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.stateIn
 
 // Manages the game state and handles state transitions.
 class GameStateManager {
-    private val _currentState = MutableStateFlow<GameState>(GameState.Initializing)
+    private val _currentState = MutableStateFlow<GameState>(GameState.MainMenu)
     val currentState: StateFlow<GameState> = _currentState.asStateFlow()
+        .stateIn(
+            scope = CoroutineScope(Dispatchers.Main + Job()),
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = GameState.MainMenu
+        )
 
     private var _score = 0
     private var _highScore = 0
@@ -55,7 +63,11 @@ class GameStateManager {
             _highScore = _score
             // saveHighScore(_highScore) // To be implemented with data persistence
         }
-        _currentState.value = GameState.GameOver(_score, _highScore)
+        println("GameStateManager: Publishing GameOver state. Score: $_score, High Score: $_highScore")
+        // Ensure we're on the main thread when updating the state
+        CoroutineScope(Dispatchers.Main).launch {
+            _currentState.emit(GameState.GameOver(_score, _highScore))
+        }
     }
 
     fun showMainMenu() {
@@ -84,11 +96,11 @@ class GameStateManager {
     fun isInState(vararg states: GameState): Boolean {
         return states.any { it::class == _currentState.value::class }
     }
-    
+
     // Decreases player's lives and checks if game over condition is met
-    fun decreaseLives(game: Game,/* onLivesDecreased: (Int) -> Unit = {}*/): Boolean {
+    fun decreaseLives(game: Game): Boolean {
         val updatedGame = game.decreaseLives()
-        // onLivesDecreased(updatedGame.lives)
+        println("GameStateManager: Decreasing lives. remaining: ${updatedGame.lives}")
         return updatedGame.lives <= 0
     }
 
@@ -107,10 +119,12 @@ class GameStateManager {
         screenHeight: Int,
         onGameOver: () -> Unit = {}
     ): Boolean {
+        println("GameStateManager: Checking for game over conditions")
+
         // Track enemies that need to be removed
         val enemiesToRemove = mutableListOf<Enemy>()
         var playerHit = false
-        
+
         enemies.forEach { enemy ->
             // Check if enemy went off-screen
             if ((enemy.y.value ?: 0f) > screenHeight) {

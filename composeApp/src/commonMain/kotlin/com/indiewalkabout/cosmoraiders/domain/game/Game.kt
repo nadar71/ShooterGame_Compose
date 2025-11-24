@@ -19,9 +19,10 @@ data class Game(
         lives = PLAYER_LIVES,  // Reset lives to default
         settings = GameSettings()
     )
-    
+
     // Decreases player's lives and returns the updated game state
     fun decreaseLives(amount: Int = 1): Game {
+        println("Game: decreaseLives: Decreasing lives $lives by $amount")
         return if (lives > amount) {
             copy(lives = lives - amount)
         } else {

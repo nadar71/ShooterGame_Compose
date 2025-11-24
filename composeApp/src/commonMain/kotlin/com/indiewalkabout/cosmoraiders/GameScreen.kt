@@ -87,45 +87,23 @@ fun MainScreen() {
     // Game state instance and management
     var game = remember { Game() }
     val stateManager = game.gameStateManager
+
+    // Collect the game state once
     val currentState by stateManager.currentState.collectAsStateWithLifecycle()
 
-    // Screen dimensions
+    // Track game objects and UI state
+    val bullets = remember { mutableStateListOf<Bullet>() }
+    val enemies = remember { mutableStateListOf<Enemy>() }
+
+    // Debug the current state
+    LaunchedEffect(currentState) {
+        println("Current game state changed to: $currentState")
+    }
+    var moveDirection by remember { mutableStateOf(MoveDirection.None) }
     var screenWidth by remember { mutableStateOf(0) }
     var screenHeight by remember { mutableStateOf(0) }
 
-    // Game objects
-    val bullets = remember { mutableStateListOf<Bullet>() }
-    val enemies = remember { mutableStateListOf<Enemy>() }
-    var moveDirection by remember { mutableStateOf(MoveDirection.None) }
-
-    // Handle game state changes
-    LaunchedEffect(Unit) {
-        stateManager.currentState.collectLatest { state ->
-            when (state) {
-                is GameState.Playing -> {
-                    // Start game loop when game is playing
-                    // (Game loop implementation will go here)
-                }
-
-                is GameState.GameOver -> {
-                    // Handle game over
-                    bullets.clear()
-                    enemies.clear()
-                }
-
-                is GameState.LevelComplete -> {
-                    // Handle level complete
-                    bullets.clear()
-                    enemies.clear()
-                }
-
-                else -> { /* Other states */
-                }
-            }
-        }
-    }
-
-
+    // --- player stuff ---
     val runningPlayer = rememberSpriteState(
         totalFrames = 9,
         framesPerRow = 3,
@@ -170,6 +148,32 @@ fun MainScreen() {
         )
     }
 
+    // Handle game state changes
+    LaunchedEffect(currentState) {
+        when (val state = currentState) {
+            is GameState.GameOver -> {
+                println("Game Over state detected in UI. Score: ${state.finalScore}, High Score: ${state.highScore}")
+                runningPlayer.stop()
+                bullets.clear()
+                enemies.clear()
+            }
+            is GameState.Playing -> {
+                println("Game playing state detected. Resetting game objects if needed.")
+                // Reset game objects when starting a new game
+                if (bullets.isNotEmpty() || enemies.isNotEmpty()) {
+                    bullets.clear()
+                    enemies.clear()
+                }
+            }
+            else -> {
+                println("Other state detected: $state")
+            }
+        }
+    }
+
+
+
+
     // sound at life loosing
     LaunchedEffect(game.isLifeLost) {
         if (game.isLifeLost && game.lives > 0) {
@@ -178,7 +182,7 @@ fun MainScreen() {
         }
     }
 
-    // Spawn the Weapons
+    // Spawn the weapons
     LaunchedEffect(isRunning, currentState) {
         while (isRunning && currentState is GameState.Playing) {
             delay(WEAPON_SPAWN_RATE)
@@ -230,7 +234,7 @@ fun MainScreen() {
         }
     }
 
-    // Move Weapons & Targets and add Collision Detection
+    // Move Weapons,Enemies and add Collision Detection
     LaunchedEffect(currentState) {
         while (currentState is GameState.Playing) {
             withFrameMillis {
@@ -258,8 +262,7 @@ fun MainScreen() {
                 // Calculate player's center position
                 val playerCenterX = playerOffsetX.value + (PLAYER_FRAME_WIDTH / 2)
                 val playerCenterY = (screenHeight - (PLAYER_FRAME_HEIGHT / 2)).toFloat()
-                val playerRadius =
-                    PLAYER_FRAME_WIDTH / 2 * 0.6f // Slightly smaller than actual size for better gameplay
+                val playerRadius = PLAYER_FRAME_WIDTH / 2 * 0.6f // Slightly smaller than actual size for better gameplay
 
                 // Check if Game Over
                 stateManager.checkGameOver(
@@ -290,6 +293,7 @@ fun MainScreen() {
             }
             .pointerInput(currentState) {
                 awaitPointerEventScope {
+                    // Handle touch input and move player
                     detectMoveGesture(
                         gameState = currentState,
                         onLeft = {
@@ -298,8 +302,10 @@ fun MainScreen() {
                             scope.launch(Dispatchers.Main) {
                                 while (isRunning) {
                                     playerOffsetX.animateTo(
-                                        targetValue = if ((playerOffsetX.value - game.settings.playerSpeed) >= 0 - (PLAYER_FRAME_WIDTH / 2))
-                                            playerOffsetX.value - game.settings.playerSpeed else playerOffsetX.value,
+                                        targetValue =
+                                            if ((playerOffsetX.value - game.settings.playerSpeed) >= 0 - (PLAYER_FRAME_WIDTH / 2))
+                                            playerOffsetX.value - game.settings.playerSpeed
+                                            else playerOffsetX.value,
                                         animationSpec = tween(30)
                                     )
                                 }
@@ -311,8 +317,10 @@ fun MainScreen() {
                             scope.launch(Dispatchers.Main) {
                                 while (isRunning) {
                                     playerOffsetX.animateTo(
-                                        targetValue = if ((playerOffsetX.value + game.settings.playerSpeed + PLAYER_FRAME_WIDTH) <= screenWidth + (PLAYER_FRAME_WIDTH / 2))
-                                            playerOffsetX.value + game.settings.playerSpeed else playerOffsetX.value,
+                                        targetValue =
+                                            if ((playerOffsetX.value + game.settings.playerSpeed + PLAYER_FRAME_WIDTH) <= screenWidth + (PLAYER_FRAME_WIDTH / 2))
+                                            playerOffsetX.value + game.settings.playerSpeed
+                                            else playerOffsetX.value,
                                         animationSpec = tween(30)
                                     )
                                 }
@@ -394,6 +402,7 @@ fun MainScreen() {
         )
     }
 
+    // --- Menu ---
     if (currentState is GameState.MainMenu) {
         Column(
             modifier = Modifier
@@ -420,7 +429,9 @@ fun MainScreen() {
         }
     }
 
+    // --- Game Over ---
     if (currentState is GameState.GameOver) {
+        println("GameScreen: Game Over screen shown")
         Column(
             modifier = Modifier
                 .clickable(enabled = false) { }
