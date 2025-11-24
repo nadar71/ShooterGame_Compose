@@ -99,9 +99,9 @@ class GameStateManager {
 
     // Decreases player's lives and checks if game over condition is met
     fun decreaseLives(game: Game): Boolean {
-        val updatedGame = game.decreaseLives()
-        println("GameStateManager: Decreasing lives. remaining: ${updatedGame.lives}")
-        return updatedGame.lives <= 0
+        game.player.decreaseLives()
+        println("GameStateManager: Decreasing lives. remaining: ${game.player.lives}")
+        return game.player.lives <= 0
     }
 
      // Checks if the game should be over based on:
@@ -119,8 +119,6 @@ class GameStateManager {
         screenHeight: Int,
         onGameOver: () -> Unit = {}
     ): Boolean {
-        println("GameStateManager: Checking for game over conditions")
-
         // Track enemies that need to be removed
         val enemiesToRemove = mutableListOf<Enemy>()
         var playerHit = false
@@ -157,7 +155,7 @@ class GameStateManager {
                 onGameOver()
                 return true
             }
-            game.isLifeLost = true
+            game.player.markLifeLostProcessed()
         }
         
         return false

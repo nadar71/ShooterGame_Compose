@@ -64,15 +64,14 @@ import cosmoraiders.composeapp.generated.resources.run_sprite
 import cosmoraiders.composeapp.generated.resources.standing_ninja
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.imageResource
 import org.jetbrains.compose.resources.painterResource
 import org.koin.compose.koinInject
 
+import com.indiewalkabout.cosmoraiders.domain.player.Player
+
 // Game constants
-const val PLAYER_FRAME_WIDTH = 253
-const val PLAYER_FRAME_HEIGHT = 303
 const val PLAYER_LIVES = 3
 const val WEAPON_SPAWN_RATE = 150L
 const val WEAPON_SIZE = 32f
@@ -122,8 +121,8 @@ fun MainScreen() {
         SpriteSpec(
             screenWidth = screenWidth.toFloat(),
             default = SpriteSheet(
-                frameWidth = PLAYER_FRAME_WIDTH,
-                frameHeight = PLAYER_FRAME_HEIGHT,
+                frameWidth = Player.FRAME_WIDTH,
+                frameHeight = Player.FRAME_HEIGHT,
                 image = Res.drawable.run_sprite
             )
         )
@@ -132,8 +131,8 @@ fun MainScreen() {
         SpriteSpec(
             screenWidth = screenWidth.toFloat(),
             default = SpriteSheet(
-                frameWidth = PLAYER_FRAME_WIDTH,
-                frameHeight = PLAYER_FRAME_HEIGHT,
+                frameWidth = Player.FRAME_WIDTH,
+                frameHeight = Player.FRAME_HEIGHT,
                 image = Res.drawable.standing_ninja
             )
         )
@@ -144,7 +143,7 @@ fun MainScreen() {
 
     val playerOffsetX = remember(key1 = screenWidth) {
         Animatable(
-            initialValue = ((screenWidth.toFloat()) / 2 - (PLAYER_FRAME_WIDTH / 2))
+            initialValue = ((screenWidth.toFloat()) / 2 - (Player.FRAME_WIDTH / 2))
         )
     }
 
@@ -152,7 +151,8 @@ fun MainScreen() {
     LaunchedEffect(currentState) {
         when (val state = currentState) {
             is GameState.GameOver -> {
-                println("Game Over state detected in UI. Score: ${state.finalScore}, High Score: ${state.highScore}")
+                println("Game Over state detected in UI. Score: ${state.finalScore}, " +
+                        "High Score: ${state.highScore}")
                 runningPlayer.stop()
                 bullets.clear()
                 enemies.clear()
@@ -171,14 +171,11 @@ fun MainScreen() {
         }
     }
 
-
-
-
     // sound at life loosing
-    LaunchedEffect(game.isLifeLost) {
-        if (game.isLifeLost && game.lives > 0) {
+    LaunchedEffect(game.player.isLifeLost) {
+        if (game.player.isLifeLost && game.player.lives > 0) {
             audio.playSound(0)
-            game.isLifeLost = false
+            game.player.markLifeLostProcessed()
         }
     }
 
@@ -188,8 +185,8 @@ fun MainScreen() {
             delay(WEAPON_SPAWN_RATE)
             bullets.add(
                 Bullet(
-                    x = playerOffsetX.value + (PLAYER_FRAME_WIDTH / 2),
-                    y = screenHeight - PLAYER_FRAME_HEIGHT.toFloat() * 2,
+                    x = playerOffsetX.value + (Player.FRAME_WIDTH / 2),
+                    y = screenHeight - Player.FRAME_HEIGHT.toFloat() * 2,
                     radius = WEAPON_SIZE,
                     shootingSpeed = -game.settings.weaponSpeed
                 )
@@ -259,10 +256,16 @@ fun MainScreen() {
                     onSoundPlay = { index -> audio.playSound(index) }
                 )
 
-                // Calculate player's center position
-                val playerCenterX = playerOffsetX.value + (PLAYER_FRAME_WIDTH / 2)
-                val playerCenterY = (screenHeight - (PLAYER_FRAME_HEIGHT / 2)).toFloat()
-                val playerRadius = PLAYER_FRAME_WIDTH / 2 * 0.6f // Slightly smaller than actual size for better gameplay
+                // Update player position
+                game.player.updatePosition(
+                    x = playerOffsetX.value,
+                    y = (screenHeight - Player.FRAME_HEIGHT).toFloat()
+                )
+                
+                // Use player's calculated properties
+                val playerCenterX = game.player.centerX
+                val playerCenterY = game.player.centerY
+                val playerRadius = game.player.collisionRadius
 
                 // Check if Game Over
                 stateManager.checkGameOver(
@@ -303,7 +306,8 @@ fun MainScreen() {
                                 while (isRunning) {
                                     playerOffsetX.animateTo(
                                         targetValue =
-                                            if ((playerOffsetX.value - game.settings.playerSpeed) >= 0 - (PLAYER_FRAME_WIDTH / 2))
+                                            if ((playerOffsetX.value - game.settings.playerSpeed) >= 0
+                                                - (Player.FRAME_WIDTH.toFloat() / 2))
                                             playerOffsetX.value - game.settings.playerSpeed
                                             else playerOffsetX.value,
                                         animationSpec = tween(30)
@@ -318,7 +322,8 @@ fun MainScreen() {
                                 while (isRunning) {
                                     playerOffsetX.animateTo(
                                         targetValue =
-                                            if ((playerOffsetX.value + game.settings.playerSpeed + PLAYER_FRAME_WIDTH) <= screenWidth + (PLAYER_FRAME_WIDTH / 2))
+                                            if ((playerOffsetX.value + game.settings.playerSpeed + Player.FRAME_WIDTH)
+                                                <= screenWidth + (Player.FRAME_WIDTH / 2))
                                             playerOffsetX.value + game.settings.playerSpeed
                                             else playerOffsetX.value,
                                         animationSpec = tween(30)
@@ -377,7 +382,7 @@ fun MainScreen() {
                     SpriteFlip.Horizontal else null,
                 offset = IntOffset(
                     x = playerOffsetX.value.toInt(),
-                    y = (screenHeight - PLAYER_FRAME_HEIGHT - (PLAYER_FRAME_HEIGHT / 2))
+                    y = (screenHeight - Player.FRAME_HEIGHT - (Player.FRAME_HEIGHT / 2))
                 )
             )
         }
@@ -452,9 +457,9 @@ fun MainScreen() {
             )
             Spacer(modifier = Modifier.width(16.dp))
             Text(
-                text = "Lives: ${game.lives}",
+                text = "Lives: ${game.player.lives}",
                 fontSize = MaterialTheme.typography.titleLarge.fontSize,
-                color = if (game.lives <= 1) Color.Red else Color.White
+                color = if (game.player.lives <= 1) Color.Red else Color.White
             )
             Spacer(modifier = Modifier.height(24.dp))
             Button(

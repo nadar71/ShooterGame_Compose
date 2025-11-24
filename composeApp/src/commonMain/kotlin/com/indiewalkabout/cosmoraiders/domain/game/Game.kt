@@ -1,38 +1,36 @@
 package com.indiewalkabout.cosmoraiders.domain.game
 
-import com.indiewalkabout.cosmoraiders.PLAYER_LIVES
+import com.indiewalkabout.cosmoraiders.domain.player.Player
 
-
-// Represents the main game instance with all game-related data.
+/**
+ * Represents the main game instance with all game-related data.
+ */
 data class Game(
     val score: Int = 0,
     val level: Int = 1,
-    val lives: Int = PLAYER_LIVES,  // Default number of lives
-    var isLifeLost: Boolean = false,
+    val player: Player = Player.create(),
     val settings: GameSettings = GameSettings(),
     val gameStateManager: GameStateManager = GameStateManager()
 ) {
     // Creates a new game with default settings
-    fun newGame(): Game = copy(
-        score = 0,
-        level = 1,
-        lives = PLAYER_LIVES,  // Reset lives to default
-        settings = GameSettings()
-    )
-
-    // Decreases player's lives and returns the updated game state
-    fun decreaseLives(amount: Int = 1): Game {
-        println("Game: decreaseLives: Decreasing lives $lives by $amount")
-        return if (lives > amount) {
-            copy(lives = lives - amount)
-        } else {
-            copy(lives = 0)
-        }
+    fun newGame(): Game {
+        return copy(
+            score = 0,
+            level = 1,
+            player = Player.create(),
+            settings = GameSettings()
+        )
     }
     
     // Updates the game with new score and level
     fun update(score: Int = this.score, level: Int = this.level): Game {
         return copy(score = score, level = level)
+    }
+    
+    // Decreases player's lives and returns true if game over
+    fun decreaseLives(amount: Int = 1): Game {
+        player.decreaseLives(amount)
+        return copy() // Return new instance with updated player state
     }
 }
 
