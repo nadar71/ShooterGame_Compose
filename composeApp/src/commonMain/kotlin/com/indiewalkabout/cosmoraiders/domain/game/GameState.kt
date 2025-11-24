@@ -21,9 +21,3 @@ sealed class GameState {
         get() = this !is Loading
 }
 
-// @deprecated Use GameState instead for more granular state management
-enum class GameStatus {
-    Idle,
-    Started,
-    Over
-}

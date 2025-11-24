@@ -1,15 +1,18 @@
 package com.indiewalkabout.cosmoraiders.util
 
 import androidx.compose.ui.input.pointer.AwaitPointerEventScope
-import com.indiewalkabout.cosmoraiders.domain.game.GameStatus
+import com.indiewalkabout.cosmoraiders.domain.game.GameState
 
+
+// Detects horizontal swipe gestures and calls the appropriate callbacks.
+// Only processes gestures when the game is in the Playing state.
 suspend fun AwaitPointerEventScope.detectMoveGesture(
-    gameStatus: GameStatus,
+    gameState: GameState,
     onLeft: () -> Unit,
     onRight: () -> Unit,
     onFingerLifted: () -> Unit,
 ) {
-    while (gameStatus == GameStatus.Started) {
+    while (gameState is GameState.Playing) {
         val downEvent = awaitPointerEvent()
         val initialDown = downEvent.changes.firstOrNull { it.pressed }
         if(initialDown == null) continue

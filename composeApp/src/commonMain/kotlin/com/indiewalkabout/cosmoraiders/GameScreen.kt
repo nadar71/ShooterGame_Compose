@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -38,59 +39,60 @@ import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
-import com.indiewalkabout.cosmoraiders.domain.game.Game
-import com.indiewalkabout.cosmoraiders.domain.game.GameState
-import com.indiewalkabout.cosmoraiders.domain.game.GameStatus
-import com.indiewalkabout.cosmoraiders.domain.MoveDirection
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.indiewalkabout.cosmoraiders.domain.Bullet
+import com.indiewalkabout.cosmoraiders.domain.MoveDirection
 import com.indiewalkabout.cosmoraiders.domain.audio.AudioPlayer
-import com.indiewalkabout.cosmoraiders.domain.game.levels
+import com.indiewalkabout.cosmoraiders.domain.checkEnemyCollisions
 import com.indiewalkabout.cosmoraiders.domain.enemy.EasyEnemy
+import com.indiewalkabout.cosmoraiders.domain.enemy.Enemy
 import com.indiewalkabout.cosmoraiders.domain.enemy.MediumEnemy
 import com.indiewalkabout.cosmoraiders.domain.enemy.StrongEnemy
-import com.indiewalkabout.cosmoraiders.domain.enemy.Enemy
+import com.indiewalkabout.cosmoraiders.domain.game.Game
+import com.indiewalkabout.cosmoraiders.domain.game.GameState
+import com.indiewalkabout.cosmoraiders.domain.game.levels
 import com.indiewalkabout.cosmoraiders.util.detectMoveGesture
 import com.stevdza_san.sprite.component.drawSpriteView
 import com.stevdza_san.sprite.domain.SpriteFlip
 import com.stevdza_san.sprite.domain.SpriteSheet
 import com.stevdza_san.sprite.domain.SpriteSpec
 import com.stevdza_san.sprite.domain.rememberSpriteState
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.collectLatest
-import kotlinx.coroutines.launch
 import cosmoraiders.composeapp.generated.resources.Res
 import cosmoraiders.composeapp.generated.resources.background
 import cosmoraiders.composeapp.generated.resources.kunai
 import cosmoraiders.composeapp.generated.resources.run_sprite
 import cosmoraiders.composeapp.generated.resources.standing_ninja
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.imageResource
 import org.jetbrains.compose.resources.painterResource
 import org.koin.compose.koinInject
-import kotlin.math.sqrt
 
 // Game constants
-const val PLAYER_FRAME_WIDTH  = 253
+const val PLAYER_FRAME_WIDTH = 253
 const val PLAYER_FRAME_HEIGHT = 303
-const val WEAPON_SPAWN_RATE   = 150L
-const val WEAPON_SIZE         = 32f
-const val TARGET_SPAWN_RATE   = 1500L
-const val TARGET_SIZE         = 40f
+const val PLAYER_LIVES = 3
+const val WEAPON_SPAWN_RATE = 150L
+const val WEAPON_SIZE = 32f
+const val TARGET_SPAWN_RATE = 1500L
+const val TARGET_SIZE = 40f
 
 @Composable
 fun MainScreen() {
     val scope = rememberCoroutineScope()
     val audio = koinInject<AudioPlayer>()
-    
-    // Game state management
+
+    // Game state instance and management
     var game = remember { Game() }
     val stateManager = game.gameStateManager
-    val currentState by stateManager.currentState.collectAsState()
-    
+    val currentState by stateManager.currentState.collectAsStateWithLifecycle()
+
     // Screen dimensions
     var screenWidth by remember { mutableStateOf(0) }
     var screenHeight by remember { mutableStateOf(0) }
-    
+
     // Game objects
     val bullets = remember { mutableStateListOf<Bullet>() }
     val enemies = remember { mutableStateListOf<Enemy>() }
@@ -104,17 +106,21 @@ fun MainScreen() {
                     // Start game loop when game is playing
                     // (Game loop implementation will go here)
                 }
+
                 is GameState.GameOver -> {
                     // Handle game over
                     bullets.clear()
                     enemies.clear()
                 }
+
                 is GameState.LevelComplete -> {
                     // Handle level complete
                     bullets.clear()
                     enemies.clear()
                 }
-                else -> { /* Other states */ }
+
+                else -> { /* Other states */
+                }
             }
         }
     }
@@ -154,14 +160,22 @@ fun MainScreen() {
             )
         )
     }
-    val runningPlayerImage  = runningPlayerSpec.imageBitmap
+    val runningPlayerImage = runningPlayerSpec.imageBitmap
     val standingPlayerImage = standingPlayerSpec.imageBitmap
     val playerBullet01Image = imageResource(Res.drawable.kunai)
 
-    val ninjaOffsetX = remember(key1 = screenWidth) {
+    val playerOffsetX = remember(key1 = screenWidth) {
         Animatable(
             initialValue = ((screenWidth.toFloat()) / 2 - (PLAYER_FRAME_WIDTH / 2))
         )
+    }
+
+    // sound at life loosing
+    LaunchedEffect(game.isLifeLost) {
+        if (game.isLifeLost && game.lives > 0) {
+            audio.playSound(0)
+            game.isLifeLost = false
+        }
     }
 
     // Spawn the Weapons
@@ -170,7 +184,7 @@ fun MainScreen() {
             delay(WEAPON_SPAWN_RATE)
             bullets.add(
                 Bullet(
-                    x = ninjaOffsetX.value + (PLAYER_FRAME_WIDTH / 2),
+                    x = playerOffsetX.value + (PLAYER_FRAME_WIDTH / 2),
                     y = screenHeight - PLAYER_FRAME_HEIGHT.toFloat() * 2,
                     radius = WEAPON_SIZE,
                     shootingSpeed = -game.settings.weaponSpeed
@@ -231,67 +245,42 @@ fun MainScreen() {
                     weapon.y += weapon.shootingSpeed
                 }
 
-                // Check for collision
-                val weaponIterator = bullets.iterator()
-                while (weaponIterator.hasNext()) {
-                    val weapon = weaponIterator.next()
-                    val targetIterator = enemies.listIterator()
-                    while (targetIterator.hasNext()) {
-                        val target = targetIterator.next()
-                        if (isCollision(weapon, target)) {
-                            audio.playSound(index = 0)
-                            if (target is StrongEnemy) {
-                                if (target.lives > 0) {
-                                    targetIterator.set(
-                                        element = target.copy(
-                                            radius = target.radius + 10,
-                                            lives = target.lives - 1
-                                        )
-                                    )
-                                    weaponIterator.remove()
-                                } else {
-                                    weaponIterator.remove()
-                                    targetIterator.remove()
-                                    game = game.copy(score = game.score + 5)
-                                }
-                            } else if (target is MediumEnemy) {
-                                if (target.lives > 0) {
-                                    targetIterator.set(
-                                        element = target.copy(
-                                            radius = target.radius + 10,
-                                            lives = target.lives - 1
-                                        )
-                                    )
-                                    weaponIterator.remove()
-                                } else {
-                                    weaponIterator.remove()
-                                    targetIterator.remove()
-                                    game = game.copy(score = game.score + 5)
-                                }
-                            } else if (target is EasyEnemy) {
-                                weaponIterator.remove()
-                                targetIterator.remove()
-                                game = game.copy(score = game.score + 5)
-                            }
-                            break
-                        }
-                    }
-                }
+                // Check for collisions
+                checkEnemyCollisions(
+                    bullets = bullets,
+                    enemies = enemies,
+                    onCollision = { _, points ->
+                        game = game.copy(score = game.score + points)
+                    },
+                    onSoundPlay = { index -> audio.playSound(index) }
+                )
+
+                // Calculate player's center position
+                val playerCenterX = playerOffsetX.value + (PLAYER_FRAME_WIDTH / 2)
+                val playerCenterY = (screenHeight - (PLAYER_FRAME_HEIGHT / 2)).toFloat()
+                val playerRadius =
+                    PLAYER_FRAME_WIDTH / 2 * 0.6f // Slightly smaller than actual size for better gameplay
 
                 // Check if Game Over
-                val offScreenTarget = enemies.firstOrNull {
-                    it.y.value > screenHeight
-                }
-                if(offScreenTarget != null) {
-                    stateManager.gameOver()
-                    runningPlayer.stop()
-                    bullets.removeAll { true }
-                    enemies.removeAll { true }
-                }
+                stateManager.checkGameOver(
+                    game = game,
+                    enemies = enemies,
+                    playerX = playerCenterX,
+                    playerY = playerCenterY,
+                    playerRadius = playerRadius,
+                    screenHeight = screenHeight,
+                    onGameOver = {
+                        println("Game Over - Score: ${game.score}")
+                        runningPlayer.stop()
+                        bullets.clear()
+                        enemies.clear()
+                    },
+                )
             }
         }
     }
 
+    // ------------------------------------------ UI -----------------------------------------------
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -302,15 +291,15 @@ fun MainScreen() {
             .pointerInput(currentState) {
                 awaitPointerEventScope {
                     detectMoveGesture(
-                        gameStatus = if (currentState is GameState.Playing) GameStatus.Started else GameStatus.Idle,
+                        gameState = currentState,
                         onLeft = {
                             moveDirection = MoveDirection.Left
                             runningPlayer.start()
                             scope.launch(Dispatchers.Main) {
                                 while (isRunning) {
-                                    ninjaOffsetX.animateTo(
-                                        targetValue = if ((ninjaOffsetX.value - game.settings.playerSpeed) >= 0 - (PLAYER_FRAME_WIDTH / 2))
-                                            ninjaOffsetX.value - game.settings.playerSpeed else ninjaOffsetX.value,
+                                    playerOffsetX.animateTo(
+                                        targetValue = if ((playerOffsetX.value - game.settings.playerSpeed) >= 0 - (PLAYER_FRAME_WIDTH / 2))
+                                            playerOffsetX.value - game.settings.playerSpeed else playerOffsetX.value,
                                         animationSpec = tween(30)
                                     )
                                 }
@@ -321,9 +310,9 @@ fun MainScreen() {
                             runningPlayer.start()
                             scope.launch(Dispatchers.Main) {
                                 while (isRunning) {
-                                    ninjaOffsetX.animateTo(
-                                        targetValue = if ((ninjaOffsetX.value + game.settings.playerSpeed + PLAYER_FRAME_WIDTH) <= screenWidth + (PLAYER_FRAME_WIDTH / 2))
-                                            ninjaOffsetX.value + game.settings.playerSpeed else ninjaOffsetX.value,
+                                    playerOffsetX.animateTo(
+                                        targetValue = if ((playerOffsetX.value + game.settings.playerSpeed + PLAYER_FRAME_WIDTH) <= screenWidth + (PLAYER_FRAME_WIDTH / 2))
+                                            playerOffsetX.value + game.settings.playerSpeed else playerOffsetX.value,
                                         animationSpec = tween(30)
                                     )
                                 }
@@ -337,14 +326,19 @@ fun MainScreen() {
                 }
             }
     ) {
+
+        // --- Background ---
         Image(
             modifier = Modifier.fillMaxSize(),
             painter = painterResource(Res.drawable.background),
             contentDescription = null,
             contentScale = ContentScale.FillBounds
         )
+
+        // --- Game Scene ---
         Canvas(modifier = Modifier.fillMaxSize()) {
-            // Draw enemies
+
+            // -- Draw enemies
             enemies.forEach { target ->
                 drawCircle(
                     color = target.color,
@@ -355,7 +349,8 @@ fun MainScreen() {
                     )
                 )
             }
-            // Draw bullets
+
+            // -- Draw player bullets
             bullets.forEach { weapon ->
                 drawImage(
                     image = playerBullet01Image,
@@ -373,7 +368,7 @@ fun MainScreen() {
                 spriteFlip = if (moveDirection == MoveDirection.Left)
                     SpriteFlip.Horizontal else null,
                 offset = IntOffset(
-                    x = ninjaOffsetX.value.toInt(),
+                    x = playerOffsetX.value.toInt(),
                     y = (screenHeight - PLAYER_FRAME_HEIGHT - (PLAYER_FRAME_HEIGHT / 2))
                 )
             )
@@ -399,7 +394,7 @@ fun MainScreen() {
         )
     }
 
-if (currentState is GameState.MainMenu) {
+    if (currentState is GameState.MainMenu) {
         Column(
             modifier = Modifier
                 .clickable(enabled = false) { }
@@ -425,7 +420,7 @@ if (currentState is GameState.MainMenu) {
         }
     }
 
-if (currentState is GameState.GameOver) {
+    if (currentState is GameState.GameOver) {
         Column(
             modifier = Modifier
                 .clickable(enabled = false) { }
@@ -441,10 +436,14 @@ if (currentState is GameState.GameOver) {
                 color = Color.White
             )
             Text(
-                text = "Your Score: ${game.score}",
+                text = "Score: ${game.score}",
                 fontSize = MaterialTheme.typography.titleLarge.fontSize,
-                fontWeight = FontWeight.Medium,
-                color = Color.White
+            )
+            Spacer(modifier = Modifier.width(16.dp))
+            Text(
+                text = "Lives: ${game.lives}",
+                fontSize = MaterialTheme.typography.titleLarge.fontSize,
+                color = if (game.lives <= 1) Color.Red else Color.White
             )
             Spacer(modifier = Modifier.height(24.dp))
             Button(
@@ -459,9 +458,3 @@ if (currentState is GameState.GameOver) {
     }
 }
 
-fun isCollision(bullet: Bullet, enemy: Enemy): Boolean {
-    val dx = bullet.x - enemy.x
-    val dy = bullet.y - enemy.y.value
-    val distance = sqrt(dx * dx + dy * dy)
-    return distance < (bullet.radius + enemy.radius)
-}
