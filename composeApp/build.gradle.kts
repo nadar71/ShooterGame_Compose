@@ -1,3 +1,4 @@
+import org.gradle.kotlin.dsl.implementation
 import org.jetbrains.compose.desktop.application.dsl.TargetFormat
 import org.jetbrains.kotlin.gradle.ExperimentalKotlinGradlePluginApi
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
@@ -38,6 +39,7 @@ kotlin {
             implementation(libs.koin.android)
         }
         commonMain.dependencies {
+            implementation(libs.androidx.activity.compose)
             implementation(compose.runtime)
             implementation(compose.foundation)
             implementation(compose.material3)
@@ -46,12 +48,16 @@ kotlin {
             implementation(compose.components.uiToolingPreview)
             implementation(libs.androidx.lifecycle.viewmodel)
             implementation(libs.androidx.lifecycle.runtime.compose)
+            implementation(libs.androidx.navigation.compose)
+            implementation(libs.androidx.animation.core.android)
+            implementation(libs.androidx.ui.graphics)
 
             implementation(libs.koin.core)
             implementation(libs.koin.compose)
 
             implementation(libs.sprite.kmp)
         }
+
     }
 }
 
