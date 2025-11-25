@@ -79,13 +79,19 @@ const val TARGET_SPAWN_RATE = 1500L
 const val TARGET_SIZE = 40f
 
 @Composable
-fun MainScreen() {
+fun GameScreen(
+    onGameOver: (score: Int, highScore: Int) -> Unit,
+    onExitToMenu: () -> Unit
+) {
     val scope = rememberCoroutineScope()
     val audio = koinInject<AudioPlayer>()
 
     // Game state instance and management
     var game = remember { Game() }
-    val stateManager = game.gameStateManager
+    val stateManager = remember { game.gameStateManager }
+
+    // Track if we've handled the initial state
+    var hasHandledInitialState by remember { mutableStateOf(false) }
 
     // Collect the game state once
     val currentState by stateManager.currentState.collectAsStateWithLifecycle()
@@ -151,20 +157,36 @@ fun MainScreen() {
     LaunchedEffect(currentState) {
         when (val state = currentState) {
             is GameState.GameOver -> {
-                println("Game Over state detected in UI. Score: ${state.finalScore}, " +
-                        "High Score: ${state.highScore}")
+                println(
+                    "Game Over state detected in UI. Score: ${state.finalScore}, " +
+                            "High Score: ${state.highScore}"
+                )
                 runningPlayer.stop()
                 bullets.clear()
                 enemies.clear()
+                // Notify parent about game over with scores
+                onGameOver(state.finalScore, state.highScore)
             }
+
             is GameState.Playing -> {
                 println("Game playing state detected. Resetting game objects if needed.")
                 // Reset game objects when starting a new game
                 if (bullets.isNotEmpty() || enemies.isNotEmpty()) {
                     bullets.clear()
                     enemies.clear()
+                    game.player.reset()
+                    playerOffsetX.snapTo((screenWidth.toFloat() / 2) - (Player.FRAME_WIDTH / 2))
                 }
             }
+
+            is GameState.MainMenu -> {
+                // Handle any cleanup needed when returning to main menu
+                runningPlayer.stop()
+                bullets.clear()
+                enemies.clear()
+                onExitToMenu()
+            }
+
             else -> {
                 println("Other state detected: $state")
             }
@@ -261,7 +283,7 @@ fun MainScreen() {
                     x = playerOffsetX.value,
                     y = (screenHeight - Player.FRAME_HEIGHT).toFloat()
                 )
-                
+
                 // Use player's calculated properties
                 val playerCenterX = game.player.centerX
                 val playerCenterY = game.player.centerY
@@ -307,8 +329,9 @@ fun MainScreen() {
                                     playerOffsetX.animateTo(
                                         targetValue =
                                             if ((playerOffsetX.value - game.settings.playerSpeed) >= 0
-                                                - (Player.FRAME_WIDTH.toFloat() / 2))
-                                            playerOffsetX.value - game.settings.playerSpeed
+                                                - (Player.FRAME_WIDTH.toFloat() / 2)
+                                            )
+                                                playerOffsetX.value - game.settings.playerSpeed
                                             else playerOffsetX.value,
                                         animationSpec = tween(30)
                                     )
@@ -323,8 +346,9 @@ fun MainScreen() {
                                     playerOffsetX.animateTo(
                                         targetValue =
                                             if ((playerOffsetX.value + game.settings.playerSpeed + Player.FRAME_WIDTH)
-                                                <= screenWidth + (Player.FRAME_WIDTH / 2))
-                                            playerOffsetX.value + game.settings.playerSpeed
+                                                <= screenWidth + (Player.FRAME_WIDTH / 2)
+                                            )
+                                                playerOffsetX.value + game.settings.playerSpeed
                                             else playerOffsetX.value,
                                         animationSpec = tween(30)
                                     )
@@ -407,70 +431,50 @@ fun MainScreen() {
         )
     }
 
-    // --- Menu ---
-    if (currentState is GameState.MainMenu) {
-        Column(
-            modifier = Modifier
-                .clickable(enabled = false) { }
-                .background(Color.Black.copy(alpha = 0.7f))
-                .fillMaxSize(),
-            verticalArrangement = Arrangement.Center,
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Text(
-                text = "Ready?",
-                fontSize = MaterialTheme.typography.displayMedium.fontSize,
-                fontWeight = FontWeight.Bold,
-                color = Color.White
-            )
-            Spacer(modifier = Modifier.height(24.dp))
-            Button(
-                onClick = {
+    // Handle game state changes
+    LaunchedEffect(currentState) {
+        when (val state = currentState) {
+            is GameState.MainMenu -> {
+                if (hasHandledInitialState) {
+                    // Only navigate to main menu if we've already been initialized
+                    runningPlayer.stop()
+                    bullets.clear()
+                    enemies.clear()
+                    onExitToMenu()
+                } else {
+                    // This is the initial state, mark as handled
+                    hasHandledInitialState = true
+                    // Start the game automatically if we're in MainMenu on first load
                     stateManager.startNewGame()
                 }
-            ) {
-                Text(text = "Start")
             }
-        }
-    }
 
-    // --- Game Over ---
-    if (currentState is GameState.GameOver) {
-        println("GameScreen: Game Over screen shown")
-        Column(
-            modifier = Modifier
-                .clickable(enabled = false) { }
-                .background(Color.Black.copy(alpha = 0.7f))
-                .fillMaxSize(),
-            verticalArrangement = Arrangement.Center,
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Text(
-                text = "Game Over!",
-                fontSize = MaterialTheme.typography.displayLarge.fontSize,
-                fontWeight = FontWeight.Bold,
-                color = Color.White
-            )
-            Text(
-                text = "Score: ${game.score}",
-                fontSize = MaterialTheme.typography.titleLarge.fontSize,
-            )
-            Spacer(modifier = Modifier.width(16.dp))
-            Text(
-                text = "Lives: ${game.player.lives}",
-                fontSize = MaterialTheme.typography.titleLarge.fontSize,
-                color = if (game.player.lives <= 1) Color.Red else Color.White
-            )
-            Spacer(modifier = Modifier.height(24.dp))
-            Button(
-                onClick = {
-                    stateManager.resetGame()
-                    stateManager.startNewGame()
+            is GameState.GameOver -> {
+                // Clean up and navigate to game over screen
+                runningPlayer.stop()
+                bullets.clear()
+                enemies.clear()
+                onGameOver(state.finalScore, state.highScore)
+            }
+
+            is GameState.Playing -> {
+                // Mark that we've handled the initial state
+                hasHandledInitialState = true
+                // Reset game objects when starting a new game
+                if (bullets.isNotEmpty() || enemies.isNotEmpty()) {
+                    bullets.clear()
+                    enemies.clear()
+                    game.player.reset()
+                    playerOffsetX.snapTo((screenWidth.toFloat() / 2) - (Player.FRAME_WIDTH / 2))
                 }
-            ) {
-                Text(text = "Play again")
+            }
+
+            else -> {
+                // For any other state, just mark as handled
+                hasHandledInitialState = true
             }
         }
+        // The game over and main menu UIs are now handled by their respective screens
     }
 }
 

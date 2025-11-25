@@ -6,6 +6,7 @@ android-targetSdk = "34"
 androidx-activityCompose = "1.9.3"
 androidx-lifecycle = "2.8.3"
 compose-multiplatform = "1.7.0"
+navigationCompose = "2.8.9"
 kotlin = "2.0.21"
 sprite = "1.0.6"
 koin = "4.0.0"
@@ -13,6 +14,7 @@ player = "1.4.1"
 
 [libraries]
 androidx-activity-compose = { module = "androidx.activity:activity-compose", version.ref = "androidx-activityCompose" }
+androidx-navigation-compose = { module = "androidx.navigation:navigation-compose", version.ref = "navigationCompose" }
 androidx-lifecycle-viewmodel = { group = "org.jetbrains.androidx.lifecycle", name = "lifecycle-viewmodel", version.ref = "androidx-lifecycle" }
 androidx-lifecycle-runtime-compose = { group = "org.jetbrains.androidx.lifecycle", name = "lifecycle-runtime-compose", version.ref = "androidx-lifecycle" }
 
