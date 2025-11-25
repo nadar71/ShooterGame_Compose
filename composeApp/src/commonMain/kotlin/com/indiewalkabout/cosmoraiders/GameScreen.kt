@@ -79,7 +79,10 @@ const val TARGET_SPAWN_RATE = 1500L
 const val TARGET_SIZE = 40f
 
 @Composable
-fun MainScreen() {
+fun MainScreen(
+    onGameOver: (score: Int, highScore: Int) -> Unit,
+    onExitToMenu: () -> Unit
+) {
     val scope = rememberCoroutineScope()
     val audio = koinInject<AudioPlayer>()
 
@@ -147,28 +150,61 @@ fun MainScreen() {
         )
     }
 
+    // Handle exit to menu
+    LaunchedEffect(Unit) {
+        if (currentState is GameState.MainMenu) {
+            onExitToMenu()
+        }
+    }
+
+    // Track the last processed state to prevent duplicate processing
+    var lastProcessedState by remember { mutableStateOf<GameState?>(null) }
+
     // Handle game state changes
     LaunchedEffect(currentState) {
+        // Skip if we've already processed this state
+        if (currentState == lastProcessedState) {
+            return@LaunchedEffect
+        }
+        
+        println("Processing state change to: $currentState")
+        
         when (val state = currentState) {
             is GameState.GameOver -> {
-                println("Game Over state detected in UI. Score: ${state.finalScore}, " +
-                        "High Score: ${state.highScore}")
-                runningPlayer.stop()
-                bullets.clear()
-                enemies.clear()
-            }
-            is GameState.Playing -> {
-                println("Game playing state detected. Resetting game objects if needed.")
-                // Reset game objects when starting a new game
-                if (bullets.isNotEmpty() || enemies.isNotEmpty()) {
+                // Only process GameOver once per game
+                if (lastProcessedState !is GameState.GameOver) {
+                    println("Game Over state detected in UI. Score: ${state.finalScore}, " +
+                            "High Score: ${state.highScore}")
+                    runningPlayer.stop()
                     bullets.clear()
                     enemies.clear()
+                    onGameOver(state.finalScore, state.highScore)
+                }
+            }
+            is GameState.Playing -> {
+                // Only reset game objects when transitioning from a non-Playing state
+                if (lastProcessedState !is GameState.Playing) {
+                    println("Game playing state detected. Resetting game objects.")
+                    bullets.clear()
+                    enemies.clear()
+                    game.player.reset()
+                    playerOffsetX.snapTo((screenWidth.toFloat() / 2) - (Player.FRAME_WIDTH / 2))
+                }
+            }
+            is GameState.MainMenu -> {
+                // Handle any cleanup needed when returning to main menu
+                if (lastProcessedState !is GameState.MainMenu) {
+                    println("Returning to main menu")
+                    onExitToMenu()
                 }
             }
             else -> {
                 println("Other state detected: $state")
             }
         }
+        
+        // Update the last processed state
+        lastProcessedState = state
     }
 
     // sound at life loosing
