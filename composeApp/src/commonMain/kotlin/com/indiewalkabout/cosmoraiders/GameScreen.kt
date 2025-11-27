@@ -88,10 +88,7 @@ fun GameScreen(
 
     // Game state instance and management
     var game = remember { Game() }
-    val stateManager = remember { game.gameStateManager }
-
-    // Track if we've handled the initial state
-    var hasHandledInitialState by remember { mutableStateOf(false) }
+    val stateManager = game.gameStateManager
 
     // Collect the game state once
     val currentState by stateManager.currentState.collectAsStateWithLifecycle()
@@ -431,24 +428,16 @@ fun GameScreen(
         )
     }
 
-    // Handle game state changes
+    // Handle MainMenu state - navigation is handled by the NavController
     LaunchedEffect(currentState) {
         when (val state = currentState) {
             is GameState.MainMenu -> {
-                if (hasHandledInitialState) {
-                    // Only navigate to main menu if we've already been initialized
-                    runningPlayer.stop()
-                    bullets.clear()
-                    enemies.clear()
-                    onExitToMenu()
-                } else {
-                    // This is the initial state, mark as handled
-                    hasHandledInitialState = true
-                    // Start the game automatically if we're in MainMenu on first load
-                    stateManager.startNewGame()
-                }
+                // Clean up and navigate to main menu
+                runningPlayer.stop()
+                bullets.clear()
+                enemies.clear()
+                onExitToMenu()
             }
-
             is GameState.GameOver -> {
                 // Clean up and navigate to game over screen
                 runningPlayer.stop()
@@ -456,10 +445,7 @@ fun GameScreen(
                 enemies.clear()
                 onGameOver(state.finalScore, state.highScore)
             }
-
             is GameState.Playing -> {
-                // Mark that we've handled the initial state
-                hasHandledInitialState = true
                 // Reset game objects when starting a new game
                 if (bullets.isNotEmpty() || enemies.isNotEmpty()) {
                     bullets.clear()
@@ -468,11 +454,7 @@ fun GameScreen(
                     playerOffsetX.snapTo((screenWidth.toFloat() / 2) - (Player.FRAME_WIDTH / 2))
                 }
             }
-
-            else -> {
-                // For any other state, just mark as handled
-                hasHandledInitialState = true
-            }
+            else -> {}
         }
         // The game over and main menu UIs are now handled by their respective screens
     }
