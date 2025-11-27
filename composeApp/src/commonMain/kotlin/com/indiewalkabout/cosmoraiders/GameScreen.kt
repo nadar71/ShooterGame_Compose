@@ -79,7 +79,7 @@ const val TARGET_SPAWN_RATE = 1500L
 const val TARGET_SIZE = 40f
 
 @Composable
-fun MainScreen() {
+fun GameScreen() {
     val scope = rememberCoroutineScope()
     val audio = koinInject<AudioPlayer>()
 
