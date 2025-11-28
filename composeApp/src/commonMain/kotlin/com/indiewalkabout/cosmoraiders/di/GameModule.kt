@@ -1,12 +1,34 @@
 package com.indiewalkabout.cosmoraiders.di
 
+import com.indiewalkabout.cosmoraiders.PLAYER_LIVES
+import com.indiewalkabout.cosmoraiders.domain.game.Difficulty
 import com.indiewalkabout.cosmoraiders.domain.game.Game
+import com.indiewalkabout.cosmoraiders.domain.game.GameSettings
 import com.indiewalkabout.cosmoraiders.domain.game.GameStateManager
+import com.indiewalkabout.cosmoraiders.domain.player.Player
 import org.koin.dsl.module
 
 val gameModule = module {
-    // Single instance of Game that will live for the entire app lifecycle
-    single { 
+    // Player instance
+    single { Player() }
+    
+    // Game settings
+    single {
+        GameSettings(
+            playerSpeed = 15f,
+            weaponSpeed = 20f,
+            targetSpeed = 30f,
+            soundEnabled = true,
+            musicEnabled = true,
+            difficulty = Difficulty.NORMAL
+        )
+    }
+    
+    // GameStateManager
+    single { GameStateManager() }
+    
+    // Game instance
+    single {
         Game(
             score = 0,
             level = 1,
@@ -15,12 +37,4 @@ val gameModule = module {
             gameStateManager = get()
         )
     }
-    
-    // Single instance of GameStateManager
-    single { 
-        GameStateManager()
-    }
-    
-    // Game will be available for injection
-    single { get<Game>().gameStateManager }
 }
