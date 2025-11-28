@@ -20,16 +20,21 @@ fun AppNavigation() {
     ) {
         composable(Screen.MainMenu.route) {
             MainMenuScreen(
-                onStartGame = { navController.navigate(Screen.Game.route) }
+                onStartGame = {
+                    println("MainMenu: Start btn pressed, starting game...")
+                    navController.navigate(Screen.Game.route)
+                }
             )
         }
         
         composable(Screen.Game.route) {
             GameScreen(
                 onGameOver = { score, highScore ->
+                    println("GameScreen: Start btn pressed, game over...")
                     navController.navigate(Screen.GameOver.createRoute(score, highScore))
                 },
                 onExitToMenu = {
+                    println("GameScreen: Exit to menu btn pressed, exiting to menu...")
                     navController.navigate(Screen.MainMenu.route) {
                         popUpTo(Screen.Game.route) { inclusive = true }
                     }
@@ -51,11 +56,13 @@ fun AppNavigation() {
                 finalScore = score,
                 highScore = highScore,
                 onPlayAgain = {
+                    println("GameOverScreen: Play again btn pressed, playing again...")
                     navController.navigate(Screen.Game.route) {
                         popUpTo(Screen.Game.route) { inclusive = true }
                     }
                 },
                 onExitToMenu = {
+                    println("GameOverScreen: Exit to menu btn pressed, exiting to menu...")
                     navController.navigate(Screen.MainMenu.route) {
                         popUpTo(Screen.MainMenu.route) { inclusive = true }
                     }

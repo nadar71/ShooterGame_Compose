@@ -177,6 +177,7 @@ fun GameScreen(
             }
 
             is GameState.MainMenu -> {
+                println("Main Menu state detected. Resetting game objects and go to main menu.")
                 // Handle any cleanup needed when returning to main menu
                 runningPlayer.stop()
                 bullets.clear()
