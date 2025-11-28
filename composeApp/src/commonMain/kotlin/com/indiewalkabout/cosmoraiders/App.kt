@@ -7,11 +7,9 @@ import org.jetbrains.compose.ui.tooling.preview.Preview
 
 @Composable
 fun App() {
-    // AppTheme {
-        MaterialTheme {
-            AppNavigation()
-        }
-    // }
+    MaterialTheme {
+        AppNavigation()
+    }
 }
 
 @Composable

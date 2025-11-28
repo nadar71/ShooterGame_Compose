@@ -50,6 +50,7 @@ import com.indiewalkabout.cosmoraiders.domain.enemy.MediumEnemy
 import com.indiewalkabout.cosmoraiders.domain.enemy.StrongEnemy
 import com.indiewalkabout.cosmoraiders.domain.game.Game
 import com.indiewalkabout.cosmoraiders.domain.game.GameState
+import com.indiewalkabout.cosmoraiders.domain.game.GameStateManager
 import com.indiewalkabout.cosmoraiders.domain.game.levels
 import com.indiewalkabout.cosmoraiders.util.detectMoveGesture
 import com.stevdza_san.sprite.component.drawSpriteView
@@ -86,9 +87,9 @@ fun GameScreen(
     val scope = rememberCoroutineScope()
     val audio = koinInject<AudioPlayer>()
 
-    // Game state instance and management
-    var game = remember { Game() }
-    val stateManager = game.gameStateManager
+    // Get game and state manager from Koin
+    val game = org.koin.compose.koinInject<Game>()
+    val stateManager = org.koin.compose.koinInject<GameStateManager>()
 
     // Collect the game state once
     val currentState by stateManager.currentState.collectAsStateWithLifecycle()
@@ -271,7 +272,7 @@ fun GameScreen(
                     bullets = bullets,
                     enemies = enemies,
                     onCollision = { _, points ->
-                        game = game.copy(score = game.score + points)
+                        game.updateScore(score = game.score + points)
                     },
                     onSoundPlay = { index -> audio.playSound(index) }
                 )
