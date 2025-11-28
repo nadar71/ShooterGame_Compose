@@ -12,11 +12,11 @@ import kotlinx.coroutines.flow.stateIn
 class GameStateManager {
     private val _currentState = MutableStateFlow<GameState>(GameState.MainMenu)
     val currentState: StateFlow<GameState> = _currentState.asStateFlow()
-        .stateIn(
+        /*.stateIn(
             scope = CoroutineScope(Dispatchers.Main + Job()),
             started = SharingStarted.WhileSubscribed(5000),
             initialValue = GameState.MainMenu
-        )
+        )*/
 
     private var _score = 0
     private var _highScore = 0

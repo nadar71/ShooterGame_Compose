@@ -11,7 +11,7 @@ import org.koin.dsl.module
 // contains all the Android-specific dependencies.
 @OptIn(ExperimentalResourceApi::class)
 actual val platformModule = module {
-    // Android context - use a named qualifier
+    // Android context with named qualifier
     val appContext = named("ApplicationContext")
     single<Context>(appContext) { androidContext() }
     

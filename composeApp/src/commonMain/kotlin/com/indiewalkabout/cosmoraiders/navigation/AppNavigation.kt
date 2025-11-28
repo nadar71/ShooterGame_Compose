@@ -9,10 +9,17 @@ import androidx.navigation.navArgument
 import com.indiewalkabout.cosmoraiders.GameOverScreen
 import com.indiewalkabout.cosmoraiders.GameScreen
 import com.indiewalkabout.cosmoraiders.MainMenuScreen
+import com.indiewalkabout.cosmoraiders.domain.game.Game
+import com.indiewalkabout.cosmoraiders.domain.game.GameStateManager
+import org.koin.compose.koinInject
 
 @Composable
 fun AppNavigation() {
     val navController = rememberNavController()
+
+    // Get game and state manager singleton from Koin
+    val game = koinInject<Game>()
+    val stateManager = koinInject<GameStateManager>()
     
     NavHost(
         navController = navController,
@@ -22,6 +29,7 @@ fun AppNavigation() {
             MainMenuScreen(
                 onStartGame = {
                     println("MainMenu: Start btn pressed, starting game...")
+                    stateManager.startNewGame()
                     navController.navigate(Screen.Game.route)
                 }
             )
@@ -31,10 +39,12 @@ fun AppNavigation() {
             GameScreen(
                 onGameOver = { score, highScore ->
                     println("GameScreen: Start btn pressed, game over...")
+                    stateManager.gameOver()
                     navController.navigate(Screen.GameOver.createRoute(score, highScore))
                 },
                 onExitToMenu = {
                     println("GameScreen: Exit to menu btn pressed, exiting to menu...")
+                    stateManager.showMainMenu()
                     navController.navigate(Screen.MainMenu.route) {
                         popUpTo(Screen.Game.route) { inclusive = true }
                     }
@@ -57,12 +67,14 @@ fun AppNavigation() {
                 highScore = highScore,
                 onPlayAgain = {
                     println("GameOverScreen: Play again btn pressed, playing again...")
+                    stateManager.startNewGame()
                     navController.navigate(Screen.Game.route) {
                         popUpTo(Screen.Game.route) { inclusive = true }
                     }
                 },
                 onExitToMenu = {
                     println("GameOverScreen: Exit to menu btn pressed, exiting to menu...")
+                    stateManager.showMainMenu()
                     navController.navigate(Screen.MainMenu.route) {
                         popUpTo(Screen.MainMenu.route) { inclusive = true }
                     }

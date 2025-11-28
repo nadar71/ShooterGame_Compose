@@ -87,9 +87,9 @@ fun GameScreen(
     val scope = rememberCoroutineScope()
     val audio = koinInject<AudioPlayer>()
 
-    // Get game and state manager from Koin
-    val game = org.koin.compose.koinInject<Game>()
-    val stateManager = org.koin.compose.koinInject<GameStateManager>()
+    // Get game and state manager singleton from Koin
+    val game = koinInject<Game>()
+    val stateManager = koinInject<GameStateManager>()
 
     // Collect the game state once
     val currentState by stateManager.currentState.collectAsStateWithLifecycle()
