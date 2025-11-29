@@ -12,11 +12,7 @@ import kotlinx.coroutines.flow.stateIn
 class GameStateManager {
     private val _currentState = MutableStateFlow<GameState>(GameState.MainMenu)
     val currentState: StateFlow<GameState> = _currentState.asStateFlow()
-        /*.stateIn(
-            scope = CoroutineScope(Dispatchers.Main + Job()),
-            started = SharingStarted.WhileSubscribed(5000),
-            initialValue = GameState.MainMenu
-        )*/
+
 
     private var _score = 0
     private var _highScore = 0
@@ -110,6 +106,7 @@ class GameStateManager {
      // - Player's lives reaching zero
 
     // Checks for game over conditions and cleans up off-screen enemies
+    // Game over at : 0 lives or an enemies go down the screen
     fun checkGameOver(
         game: Game,
         enemies: MutableList<Enemy>,

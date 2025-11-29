@@ -33,12 +33,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.indiewalkabout.cosmoraiders.domain.Bullet
 import com.indiewalkabout.cosmoraiders.domain.MoveDirection
@@ -97,6 +99,7 @@ fun GameScreen(
     // Track game objects and UI state
     val bullets = remember { mutableStateListOf<Bullet>() }
     val enemies = remember { mutableStateListOf<Enemy>() }
+    var fallenEnemies by remember { mutableStateOf(0) }
 
     // Debug the current state
     LaunchedEffect(currentState) {
@@ -288,6 +291,19 @@ fun GameScreen(
                 val playerCenterY = game.player.centerY
                 val playerRadius = game.player.collisionRadius
 
+                // Check if enemy went off-screen
+                val enemiesToRemove = mutableListOf<Enemy>()
+                enemies.forEach { enemy ->
+                    if ((enemy.y.value ?: 0f) > screenHeight) {
+                        println("Enemy went off-screen: $enemy")
+                        fallenEnemies++
+                        enemiesToRemove.add(enemy)
+                    }
+                }
+                enemiesToRemove.forEach { enemy ->
+                    enemies.remove(enemy)
+                }
+
                 // Check if Game Over
                 stateManager.checkGameOver(
                     game = game,
@@ -411,23 +427,78 @@ fun GameScreen(
         }
     }
 
-    Row(
+    // Game stats overlay
+    Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(
-                horizontal = 34.dp,
-                vertical = 34.dp
-            ),
-        horizontalArrangement = Arrangement.SpaceBetween
+            .padding(16.dp)
     ) {
-        Text(
-            text = "Level: ${levels.firstOrNull { it.first.score >= game.score }?.first?.name ?: "MAX"}",
-            fontSize = MaterialTheme.typography.titleLarge.fontSize,
-        )
-        Text(
-            text = "Score: ${game.score}",
-            fontSize = MaterialTheme.typography.titleLarge.fontSize,
-        )
+        // Top row with lives and fallen enemies
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            // Lives counter
+            Text(
+                text = "Lives: ${game.player.lives}",
+                color = Color.White,
+                fontSize = 20.sp,
+                fontWeight = FontWeight.Bold,
+                style = MaterialTheme.typography.titleLarge.copy(
+                    shadow = Shadow(
+                        color = Color.Black,
+                        offset = Offset(1f, 1f),
+                        blurRadius = 4f
+                    )
+                )
+            )
+            
+            // Fallen enemies counter
+            Text(
+                text = "Fallen: $fallenEnemies",
+                color = Color(0xFFFF5252),
+                fontSize = 20.sp,
+                fontWeight = FontWeight.Bold,
+                style = MaterialTheme.typography.titleLarge.copy(
+                    shadow = Shadow(
+                        color = Color.Black,
+                        offset = Offset(1f, 1f),
+                        blurRadius = 4f
+                    )
+                )
+            )
+        }
+        
+        // Bottom row with level and score
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = 8.dp),
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Text(
+                text = "Level: ${levels.firstOrNull { it.first.score >= game.score }?.first?.name ?: "MAX"}",
+                color = Color.White,
+                style = MaterialTheme.typography.titleMedium.copy(
+                    shadow = Shadow(
+                        color = Color.Black,
+                        offset = Offset(1f, 1f),
+                        blurRadius = 4f
+                    )
+                )
+            )
+            Text(
+                text = "Score: ${game.score}",
+                color = Color.White,
+                style = MaterialTheme.typography.titleMedium.copy(
+                    shadow = Shadow(
+                        color = Color.Black,
+                        offset = Offset(1f, 1f),
+                        blurRadius = 4f
+                    )
+                )
+            )
+        }
     }
 
     // Handle MainMenu state - navigation is handled by the NavController
