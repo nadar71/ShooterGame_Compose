@@ -2,9 +2,7 @@ package com.indiewalkabout.cosmoraiders.domain.game
 
 import com.indiewalkabout.cosmoraiders.domain.player.Player
 
-/**
- * Represents the main game instance with all game-related data.
- */
+// Represents the main game instance with all game-related data.
 data class Game(
     val score: Int = 0,
     val level: Int = 1,
@@ -22,9 +20,19 @@ data class Game(
         )
     }
     
-    // Updates the game with new score and level
-    fun update(score: Int = this.score, level: Int = this.level): Game {
+    // Updates game score and level
+    fun updateScoreLevel(score: Int = this.score, level: Int = this.level): Game {
         return copy(score = score, level = level)
+    }
+
+    // Updates game score and level
+    fun updateScore(score: Int = this.score): Game {
+        return copy(score = score)
+    }
+
+    // Updates game score and level
+    fun updateLevel(level: Int = this.level): Game {
+        return copy(level = level)
     }
     
     // Decreases player's lives and returns true if game over

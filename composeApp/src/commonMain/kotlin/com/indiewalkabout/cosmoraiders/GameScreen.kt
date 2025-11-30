@@ -33,12 +33,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.indiewalkabout.cosmoraiders.domain.Bullet
 import com.indiewalkabout.cosmoraiders.domain.MoveDirection
@@ -50,6 +52,7 @@ import com.indiewalkabout.cosmoraiders.domain.enemy.MediumEnemy
 import com.indiewalkabout.cosmoraiders.domain.enemy.StrongEnemy
 import com.indiewalkabout.cosmoraiders.domain.game.Game
 import com.indiewalkabout.cosmoraiders.domain.game.GameState
+import com.indiewalkabout.cosmoraiders.domain.game.GameStateManager
 import com.indiewalkabout.cosmoraiders.domain.game.levels
 import com.indiewalkabout.cosmoraiders.util.detectMoveGesture
 import com.stevdza_san.sprite.component.drawSpriteView
@@ -79,13 +82,16 @@ const val TARGET_SPAWN_RATE = 1500L
 const val TARGET_SIZE = 40f
 
 @Composable
-fun MainScreen() {
+fun GameScreen(
+    onGameOver: (score: Int, highScore: Int) -> Unit,
+    onExitToMenu: () -> Unit
+) {
     val scope = rememberCoroutineScope()
     val audio = koinInject<AudioPlayer>()
 
-    // Game state instance and management
-    var game = remember { Game() }
-    val stateManager = game.gameStateManager
+    // Get game and state manager singleton from Koin
+    val game = koinInject<Game>()
+    val stateManager = koinInject<GameStateManager>()
 
     // Collect the game state once
     val currentState by stateManager.currentState.collectAsStateWithLifecycle()
@@ -93,6 +99,7 @@ fun MainScreen() {
     // Track game objects and UI state
     val bullets = remember { mutableStateListOf<Bullet>() }
     val enemies = remember { mutableStateListOf<Enemy>() }
+    var fallenEnemies by remember { mutableStateOf(0) }
 
     // Debug the current state
     LaunchedEffect(currentState) {
@@ -151,20 +158,37 @@ fun MainScreen() {
     LaunchedEffect(currentState) {
         when (val state = currentState) {
             is GameState.GameOver -> {
-                println("Game Over state detected in UI. Score: ${state.finalScore}, " +
-                        "High Score: ${state.highScore}")
+                println(
+                    "Game Over state detected in UI. Score: ${state.finalScore}, " +
+                            "High Score: ${state.highScore}"
+                )
                 runningPlayer.stop()
                 bullets.clear()
                 enemies.clear()
+                // Notify parent about game over with scores
+                onGameOver(state.finalScore, state.highScore)
             }
+
             is GameState.Playing -> {
                 println("Game playing state detected. Resetting game objects if needed.")
                 // Reset game objects when starting a new game
                 if (bullets.isNotEmpty() || enemies.isNotEmpty()) {
                     bullets.clear()
                     enemies.clear()
+                    game.player.reset()
+                    playerOffsetX.snapTo((screenWidth.toFloat() / 2) - (Player.FRAME_WIDTH / 2))
                 }
             }
+
+            is GameState.MainMenu -> {
+                println("Main Menu state detected. Resetting game objects and go to main menu.")
+                // Handle any cleanup needed when returning to main menu
+                runningPlayer.stop()
+                bullets.clear()
+                enemies.clear()
+                onExitToMenu()
+            }
+
             else -> {
                 println("Other state detected: $state")
             }
@@ -251,7 +275,7 @@ fun MainScreen() {
                     bullets = bullets,
                     enemies = enemies,
                     onCollision = { _, points ->
-                        game = game.copy(score = game.score + points)
+                        game.updateScore(score = game.score + points)
                     },
                     onSoundPlay = { index -> audio.playSound(index) }
                 )
@@ -261,11 +285,24 @@ fun MainScreen() {
                     x = playerOffsetX.value,
                     y = (screenHeight - Player.FRAME_HEIGHT).toFloat()
                 )
-                
+
                 // Use player's calculated properties
                 val playerCenterX = game.player.centerX
                 val playerCenterY = game.player.centerY
                 val playerRadius = game.player.collisionRadius
+
+                // Check if enemy went off-screen
+                val enemiesToRemove = mutableListOf<Enemy>()
+                enemies.forEach { enemy ->
+                    if ((enemy.y.value ?: 0f) > screenHeight) {
+                        println("Enemy went off-screen: $enemy")
+                        fallenEnemies++
+                        enemiesToRemove.add(enemy)
+                    }
+                }
+                enemiesToRemove.forEach { enemy ->
+                    enemies.remove(enemy)
+                }
 
                 // Check if Game Over
                 stateManager.checkGameOver(
@@ -307,8 +344,9 @@ fun MainScreen() {
                                     playerOffsetX.animateTo(
                                         targetValue =
                                             if ((playerOffsetX.value - game.settings.playerSpeed) >= 0
-                                                - (Player.FRAME_WIDTH.toFloat() / 2))
-                                            playerOffsetX.value - game.settings.playerSpeed
+                                                - (Player.FRAME_WIDTH.toFloat() / 2)
+                                            )
+                                                playerOffsetX.value - game.settings.playerSpeed
                                             else playerOffsetX.value,
                                         animationSpec = tween(30)
                                     )
@@ -323,8 +361,9 @@ fun MainScreen() {
                                     playerOffsetX.animateTo(
                                         targetValue =
                                             if ((playerOffsetX.value + game.settings.playerSpeed + Player.FRAME_WIDTH)
-                                                <= screenWidth + (Player.FRAME_WIDTH / 2))
-                                            playerOffsetX.value + game.settings.playerSpeed
+                                                <= screenWidth + (Player.FRAME_WIDTH / 2)
+                                            )
+                                                playerOffsetX.value + game.settings.playerSpeed
                                             else playerOffsetX.value,
                                         animationSpec = tween(30)
                                     )
@@ -388,89 +427,109 @@ fun MainScreen() {
         }
     }
 
-    Row(
+    // Game stats overlay
+    Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(
-                horizontal = 34.dp,
-                vertical = 34.dp
-            ),
-        horizontalArrangement = Arrangement.SpaceBetween
+            .padding(16.dp)
     ) {
-        Text(
-            text = "Level: ${levels.firstOrNull { it.first.score >= game.score }?.first?.name ?: "MAX"}",
-            fontSize = MaterialTheme.typography.titleLarge.fontSize,
-        )
-        Text(
-            text = "Score: ${game.score}",
-            fontSize = MaterialTheme.typography.titleLarge.fontSize,
-        )
-    }
-
-    // --- Menu ---
-    if (currentState is GameState.MainMenu) {
-        Column(
-            modifier = Modifier
-                .clickable(enabled = false) { }
-                .background(Color.Black.copy(alpha = 0.7f))
-                .fillMaxSize(),
-            verticalArrangement = Arrangement.Center,
-            horizontalAlignment = Alignment.CenterHorizontally
+        // Top row with lives and fallen enemies
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween
         ) {
+            // Lives counter
             Text(
-                text = "Ready?",
-                fontSize = MaterialTheme.typography.displayMedium.fontSize,
+                text = "Lives: ${game.player.lives}",
+                color = Color.White,
+                fontSize = 20.sp,
                 fontWeight = FontWeight.Bold,
-                color = Color.White
+                style = MaterialTheme.typography.titleLarge.copy(
+                    shadow = Shadow(
+                        color = Color.Black,
+                        offset = Offset(1f, 1f),
+                        blurRadius = 4f
+                    )
+                )
             )
-            Spacer(modifier = Modifier.height(24.dp))
-            Button(
-                onClick = {
-                    stateManager.startNewGame()
-                }
-            ) {
-                Text(text = "Start")
-            }
+            
+            // Fallen enemies counter
+            Text(
+                text = "Fallen: $fallenEnemies",
+                color = Color(0xFFFF5252),
+                fontSize = 20.sp,
+                fontWeight = FontWeight.Bold,
+                style = MaterialTheme.typography.titleLarge.copy(
+                    shadow = Shadow(
+                        color = Color.Black,
+                        offset = Offset(1f, 1f),
+                        blurRadius = 4f
+                    )
+                )
+            )
         }
-    }
-
-    // --- Game Over ---
-    if (currentState is GameState.GameOver) {
-        println("GameScreen: Game Over screen shown")
-        Column(
+        
+        // Bottom row with level and score
+        Row(
             modifier = Modifier
-                .clickable(enabled = false) { }
-                .background(Color.Black.copy(alpha = 0.7f))
-                .fillMaxSize(),
-            verticalArrangement = Arrangement.Center,
-            horizontalAlignment = Alignment.CenterHorizontally
+                .fillMaxWidth()
+                .padding(top = 8.dp),
+            horizontalArrangement = Arrangement.SpaceBetween
         ) {
             Text(
-                text = "Game Over!",
-                fontSize = MaterialTheme.typography.displayLarge.fontSize,
-                fontWeight = FontWeight.Bold,
-                color = Color.White
+                text = "Level: ${levels.firstOrNull { it.first.score >= game.score }?.first?.name ?: "MAX"}",
+                color = Color.White,
+                style = MaterialTheme.typography.titleMedium.copy(
+                    shadow = Shadow(
+                        color = Color.Black,
+                        offset = Offset(1f, 1f),
+                        blurRadius = 4f
+                    )
+                )
             )
             Text(
                 text = "Score: ${game.score}",
-                fontSize = MaterialTheme.typography.titleLarge.fontSize,
+                color = Color.White,
+                style = MaterialTheme.typography.titleMedium.copy(
+                    shadow = Shadow(
+                        color = Color.Black,
+                        offset = Offset(1f, 1f),
+                        blurRadius = 4f
+                    )
+                )
             )
-            Spacer(modifier = Modifier.width(16.dp))
-            Text(
-                text = "Lives: ${game.player.lives}",
-                fontSize = MaterialTheme.typography.titleLarge.fontSize,
-                color = if (game.player.lives <= 1) Color.Red else Color.White
-            )
-            Spacer(modifier = Modifier.height(24.dp))
-            Button(
-                onClick = {
-                    stateManager.resetGame()
-                    stateManager.startNewGame()
-                }
-            ) {
-                Text(text = "Play again")
-            }
         }
+    }
+
+    // Handle MainMenu state - navigation is handled by the NavController
+    LaunchedEffect(currentState) {
+        when (val state = currentState) {
+            is GameState.MainMenu -> {
+                // Clean up and navigate to main menu
+                runningPlayer.stop()
+                bullets.clear()
+                enemies.clear()
+                onExitToMenu()
+            }
+            is GameState.GameOver -> {
+                // Clean up and navigate to game over screen
+                runningPlayer.stop()
+                bullets.clear()
+                enemies.clear()
+                onGameOver(state.finalScore, state.highScore)
+            }
+            is GameState.Playing -> {
+                // Reset game objects when starting a new game
+                if (bullets.isNotEmpty() || enemies.isNotEmpty()) {
+                    bullets.clear()
+                    enemies.clear()
+                    game.player.reset()
+                    playerOffsetX.snapTo((screenWidth.toFloat() / 2) - (Player.FRAME_WIDTH / 2))
+                }
+            }
+            else -> {}
+        }
+        // The game over and main menu UIs are now handled by their respective screens
     }
 }
 
