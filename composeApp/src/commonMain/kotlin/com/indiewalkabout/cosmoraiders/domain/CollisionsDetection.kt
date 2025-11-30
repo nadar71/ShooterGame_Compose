@@ -17,7 +17,7 @@ fun isCollisionBulletEnemy(bullet: Bullet, enemy: Enemy): Boolean {
 
 fun isCollisionPlayerEnemy(player: Player, enemy: Enemy): Boolean {
     val dx = player.centerX - enemy.x
-    val dy = player.centerY - (enemy.y.value ?: 0f)
+    val dy = player.centerY - enemy.y.value
     val distance = kotlin.math.hypot(dx, dy).toDouble()
     return distance < (player.radius + enemy.radius)
 }
@@ -29,13 +29,12 @@ fun checkEnemyCollisions(
     onCollision: (enemy: Enemy, points: Int) -> Unit,
     onSoundPlay: (index: Int) -> Unit
 ) {
-    val bulletIterator = bullets.iterator()
-    while (bulletIterator.hasNext()) {
-        val bullet = bulletIterator.next()
-        val enemyIterator = enemies.listIterator()
-        
-        while (enemyIterator.hasNext()) {
-            val enemy = enemyIterator.next()
+    val enemyIterator = enemies.listIterator()
+    while (enemyIterator.hasNext()) {
+        val bulletIterator = bullets.iterator()
+        val enemy = enemyIterator.next()
+        while (bulletIterator.hasNext()) {
+            val bullet = bulletIterator.next()
             // check player's bullet-enemy collision
             if (isCollisionBulletEnemy(bullet, enemy)) {
                 println("Bullet hit enemy: $enemy")
@@ -48,19 +47,20 @@ fun checkEnemyCollisions(
                 onCollision(enemy, 5)
                 break
             }
-            // check player-enemy collision
-            if (isCollisionPlayerEnemy(player, enemy)) {
-                println("Enemy hit player:")
-                onSoundPlay(0)
-                when (enemy) {
-                    is StrongEnemy -> handleStrongEnemyCollision(enemy, enemyIterator, bulletIterator)
-                    is MediumEnemy -> handleMediumEnemyCollision(enemy, enemyIterator, bulletIterator)
-                    is EasyEnemy   -> handleEasyEnemyCollision(enemy, enemyIterator, bulletIterator, 5)
-                }
-                onCollision(enemy, 5)
-                player.switchHitFlag()
-                break
+        }
+
+        // check player-enemy collision
+        if (isCollisionPlayerEnemy(player, enemy)) {
+            println("Enemy hit player:")
+            onSoundPlay(0)
+            when (enemy) {
+                is StrongEnemy -> handleStrongEnemyCollision(enemy, enemyIterator, bulletIterator)
+                is MediumEnemy -> handleMediumEnemyCollision(enemy, enemyIterator, bulletIterator)
+                is EasyEnemy   -> handleEasyEnemyCollision(enemy, enemyIterator, bulletIterator, 5)
             }
+            onCollision(enemy, 5)
+            player.switchHitFlag()
+            break
         }
     }
 }

@@ -154,7 +154,7 @@ fun GameScreen(
         runningPlayer.stop()
         bullets.clear()
         enemies.clear()
-        player.reset()
+        // player.reset()
         stateManager.gameOver()
     }
 
