@@ -9,7 +9,6 @@ import androidx.navigation.navArgument
 import com.indiewalkabout.cosmoraiders.GameOverScreen
 import com.indiewalkabout.cosmoraiders.GameScreen
 import com.indiewalkabout.cosmoraiders.MainMenuScreen
-import com.indiewalkabout.cosmoraiders.domain.game.Game
 import com.indiewalkabout.cosmoraiders.domain.game.GameStateManager
 import org.koin.compose.koinInject
 
@@ -17,8 +16,6 @@ import org.koin.compose.koinInject
 fun AppNavigation() {
     val navController = rememberNavController()
 
-    // Get game and state manager singleton from Koin
-    val game = koinInject<Game>()
     val stateManager = koinInject<GameStateManager>()
     
     NavHost(
@@ -38,13 +35,11 @@ fun AppNavigation() {
         composable(Screen.Game.route) {
             GameScreen(
                 onGameOver = { score, highScore ->
-                    println("GameScreen: Start btn pressed, game over...")
-                    stateManager.gameOver()
+                    println("GameScreen: game over action")
                     navController.navigate(Screen.GameOver.createRoute(score, highScore))
                 },
                 onExitToMenu = {
                     println("GameScreen: Exit to menu btn pressed, exiting to menu...")
-                    stateManager.showMainMenu()
                     navController.navigate(Screen.MainMenu.route) {
                         popUpTo(Screen.Game.route) { inclusive = true }
                     }

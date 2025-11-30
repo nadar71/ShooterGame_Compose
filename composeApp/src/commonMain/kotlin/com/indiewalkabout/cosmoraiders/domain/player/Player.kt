@@ -7,8 +7,8 @@ class Player {
     // Player state
     var lives: Int = PLAYER_LIVES
         private set
-    
-    var isLifeLost: Boolean = false
+
+    var isHit: Boolean = false
         internal set
     
     var position: Offset = Offset.Zero
@@ -38,7 +38,7 @@ class Player {
     }
     
     // Computed properties
-    val collisionRadius: Float
+    val radius: Float
         get() = (FRAME_WIDTH / 2) * COLLISION_RADIUS_FACTOR
     
     val centerX: Float
@@ -53,7 +53,7 @@ class Player {
     // Player actions
     fun decreaseLives(amount: Int = 1) {
         lives = (lives - amount).coerceAtLeast(0)
-        isLifeLost = true
+        // isLifeLost = true
         println("Player: Lives decreased to $lives")
     }
     
@@ -63,13 +63,14 @@ class Player {
     
     fun reset() {
         lives = PLAYER_LIVES
-        isLifeLost = false
+        // isLifeLost = false
         position = Offset.Zero
         println("Player: Reset to initial state")
     }
-    
-    fun markLifeLostProcessed() {
-        isLifeLost = false
+
+    fun switchHitFlag() {
+        isHit = !isHit
+        println("Player: isHit flag toggled to $isHit")
     }
 
 }

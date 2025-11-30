@@ -4,16 +4,26 @@ import com.indiewalkabout.cosmoraiders.domain.enemy.Enemy
 import com.indiewalkabout.cosmoraiders.domain.enemy.StrongEnemy
 import com.indiewalkabout.cosmoraiders.domain.enemy.MediumEnemy
 import com.indiewalkabout.cosmoraiders.domain.enemy.EasyEnemy
+import com.indiewalkabout.cosmoraiders.domain.player.Player
 import kotlin.math.sqrt
+import kotlin.text.Typography.bullet
 
-fun isCollision(bullet: Bullet, enemy: Enemy): Boolean {
+fun isCollisionBulletEnemy(bullet: Bullet, enemy: Enemy): Boolean {
     val dx = bullet.x - enemy.x
     val dy = bullet.y - enemy.y.value
-    val distance = sqrt(dx * dx + dy * dy)
+    val distance = kotlin.math.hypot(dx, dy).toDouble()
     return distance < (bullet.radius + enemy.radius)
 }
 
+fun isCollisionPlayerEnemy(player: Player, enemy: Enemy): Boolean {
+    val dx = player.centerX - enemy.x
+    val dy = player.centerY - (enemy.y.value ?: 0f)
+    val distance = kotlin.math.hypot(dx, dy).toDouble()
+    return distance < (player.radius + enemy.radius)
+}
+
 fun checkEnemyCollisions(
+    player: Player,
     bullets: MutableList<Bullet>,
     enemies: MutableList<Enemy>,
     onCollision: (enemy: Enemy, points: Int) -> Unit,
@@ -26,9 +36,10 @@ fun checkEnemyCollisions(
         
         while (enemyIterator.hasNext()) {
             val enemy = enemyIterator.next()
-            if (isCollision(bullet, enemy)) {
+            // check player's bullet-enemy collision
+            if (isCollisionBulletEnemy(bullet, enemy)) {
+                println("Bullet hit enemy: $enemy")
                 onSoundPlay(0)
-                
                 when (enemy) {
                     is StrongEnemy -> handleStrongEnemyCollision(enemy, enemyIterator, bulletIterator)
                     is MediumEnemy -> handleMediumEnemyCollision(enemy, enemyIterator, bulletIterator)
@@ -37,10 +48,24 @@ fun checkEnemyCollisions(
                 onCollision(enemy, 5)
                 break
             }
+            // check player-enemy collision
+            if (isCollisionPlayerEnemy(player, enemy)) {
+                println("Enemy hit player:")
+                onSoundPlay(0)
+                when (enemy) {
+                    is StrongEnemy -> handleStrongEnemyCollision(enemy, enemyIterator, bulletIterator)
+                    is MediumEnemy -> handleMediumEnemyCollision(enemy, enemyIterator, bulletIterator)
+                    is EasyEnemy   -> handleEasyEnemyCollision(enemy, enemyIterator, bulletIterator, 5)
+                }
+                onCollision(enemy, 5)
+                player.switchHitFlag()
+                break
+            }
         }
     }
 }
 
+// TODO : set these inside enemy class
 private fun handleStrongEnemyCollision(
     enemy: StrongEnemy,
     enemyIterator: MutableListIterator<Enemy>,
