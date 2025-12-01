@@ -296,7 +296,8 @@ fun GameScreen(
                         if (enemy.lives <= 0) {
                             enemy.destroy()
                         }
-                        game.updateScore(score = game.score + scorePoints)
+                        stateManager.addScore(scorePoints)
+                        println("GameScreen: score added: $scorePoints, total score: ${stateManager.score}")
                     },
                     onSoundPlay = { index -> audio.playSound(index) }
                 )
@@ -309,7 +310,7 @@ fun GameScreen(
 
                 // Check if enemy went off-screen
                 enemies.forEach { enemy ->
-                    if ((enemy.y.value) > screenHeight/2) {
+                    if ((enemy.y.value) > screenHeight) {
                         println("Enemy went off-screen: $enemy")
                         isEnemyAtBottom = true
                         enemy.destroy()
