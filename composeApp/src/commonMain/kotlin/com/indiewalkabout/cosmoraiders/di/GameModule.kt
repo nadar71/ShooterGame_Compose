@@ -1,9 +1,8 @@
 package com.indiewalkabout.cosmoraiders.di
 
 import com.indiewalkabout.cosmoraiders.data.local.enum.DifficultyLevel
-import com.indiewalkabout.cosmoraiders.domain.model.game.Game
+import com.indiewalkabout.cosmoraiders.domain.model.GameManager
 import com.indiewalkabout.cosmoraiders.domain.model.game.GameSettings
-import com.indiewalkabout.cosmoraiders.presentation.state.GameStateManager
 import com.indiewalkabout.cosmoraiders.domain.model.player.Player
 import org.koin.dsl.module
 
@@ -23,17 +22,11 @@ val gameModule = module {
         )
     }
     
-    // GameStateManager
-    single { GameStateManager() }
-    
-    // Game instance
+    // GameManager instance
     single {
-        Game(
-            score = 0,
-            level = 1,
+        GameManager(
             player = get(),
-            settings = get(),
-            gameStateManager = get()
+            settings = get()
         )
     }
 }

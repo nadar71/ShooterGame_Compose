@@ -50,6 +50,7 @@ import com.indiewalkabout.cosmoraiders.domain.model.game.Game
 import com.indiewalkabout.cosmoraiders.presentation.state.GameState
 import com.indiewalkabout.cosmoraiders.presentation.state.GameStateManager
 import com.indiewalkabout.cosmoraiders.data.local.enum.levels
+import com.indiewalkabout.cosmoraiders.domain.model.GameManager
 import com.indiewalkabout.cosmoraiders.util.detectMoveGesture
 import com.stevdza_san.sprite.component.drawSpriteView
 import com.stevdza_san.sprite.domain.SpriteFlip
@@ -80,13 +81,12 @@ fun GameScreen(
     val scope = rememberCoroutineScope()
     val audio = koinInject<AudioPlayer>()
 
-    // Get game and state manager singleton from Koin
-    val game = koinInject<Game>()
-    val player = game.player
-    val stateManager = koinInject<GameStateManager>()
+    // Get game manager singleton from Koin
+    val gameManager = koinInject<GameManager>()
+    val player = gameManager.player
 
     // Collect the game state once
-    val currentState by stateManager.currentState.collectAsStateWithLifecycle()
+    val currentState by gameManager.currentState.collectAsStateWithLifecycle()
 
     // Track game objects and UI state
     val bullets = remember { mutableStateListOf<Bullet>() }
@@ -153,7 +153,7 @@ fun GameScreen(
         bullets.clear()
         enemies.clear()
         // player.reset()
-        stateManager.gameOver()
+        gameManager.gameOver()
     }
 
     // --------------------------------------- GAME LOGIC ------------------------------------------
@@ -232,7 +232,7 @@ fun GameScreen(
                     x = playerOffsetX.value + (Player.FRAME_WIDTH / 2),
                     y = screenHeight - Player.FRAME_HEIGHT.toFloat() * 2,
                     radius = WEAPON_SIZE,
-                    shootingSpeed = -game.settings.weaponSpeed
+                    shootingSpeed = -gameManager.settings.weaponSpeed
                 )
             )
         }
@@ -249,7 +249,7 @@ fun GameScreen(
                     scope = scope,
                     x = randomX.toFloat(),
                     y = Animatable(0f),
-                    fallingSpeed = game.settings.targetSpeed
+                    fallingSpeed = gameManager.settings.targetSpeed
                 )
                 enemies.add(mediumEnemy)
             } else if (randomX > screenWidth * 0.75) {
@@ -257,7 +257,7 @@ fun GameScreen(
                     scope = scope,
                     x = randomX.toFloat(),
                     y = Animatable(0f),
-                    fallingSpeed = game.settings.targetSpeed * 0.25f
+                    fallingSpeed = gameManager.settings.targetSpeed * 0.25f
                 )
                 enemies.add(strongEnemy)
             } else {
@@ -265,7 +265,7 @@ fun GameScreen(
                     scope = scope,
                     x = randomX.toFloat(),
                     y = Animatable(0f),
-                    fallingSpeed = game.settings.targetSpeed
+                    fallingSpeed = gameManager.settings.targetSpeed
                 )
                 enemies.add(easyEnemy)
             }
@@ -296,8 +296,8 @@ fun GameScreen(
                         if (enemy.lives <= 0) {
                             enemy.destroy()
                         }
-                        stateManager.addScore(scorePoints)
-                        println("GameScreen: score added: $scorePoints, total score: ${stateManager.score}")
+                        gameManager.addScore(scorePoints)
+                        println("GameScreen: score added: $scorePoints, total score: ${gameManager.score}")
                     },
                     onSoundPlay = { index -> audio.playSound(index) }
                 )
@@ -336,9 +336,10 @@ fun GameScreen(
             is GameState.GameOver -> {
                 // Clean up and navigate to game over screen
                 runningPlayer.stop()
-                bullets.clear()
-                enemies.clear()
-                onGameOver(state.finalScore, state.highScore)
+                if (currentState is GameState.GameOver) {
+                    gameManager.gameOver()
+                    onGameOver(gameManager.score, gameManager.highScore)
+                }
             }
             is GameState.Playing -> {
                 // Reset game objects when starting a new game
@@ -378,10 +379,10 @@ fun GameScreen(
                                 while (isRunning) {
                                     playerOffsetX.animateTo(
                                         targetValue =
-                                            if ((playerOffsetX.value - game.settings.playerSpeed) >= 0
+                                            if ((playerOffsetX.value - gameManager.settings.playerSpeed) >= 0
                                                 - (Player.FRAME_WIDTH.toFloat() / 2)
                                             )
-                                                playerOffsetX.value - game.settings.playerSpeed
+                                                playerOffsetX.value - gameManager.settings.playerSpeed
                                             else playerOffsetX.value,
                                         animationSpec = tween(30)
                                     )
@@ -395,10 +396,10 @@ fun GameScreen(
                                 while (isRunning) {
                                     playerOffsetX.animateTo(
                                         targetValue =
-                                            if ((playerOffsetX.value + game.settings.playerSpeed + Player.FRAME_WIDTH)
+                                            if ((playerOffsetX.value + gameManager.settings.playerSpeed + Player.FRAME_WIDTH)
                                                 <= screenWidth + (Player.FRAME_WIDTH / 2)
                                             )
-                                                playerOffsetX.value + game.settings.playerSpeed
+                                                playerOffsetX.value + gameManager.settings.playerSpeed
                                             else playerOffsetX.value,
                                         animationSpec = tween(30)
                                     )
@@ -513,7 +514,7 @@ fun GameScreen(
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
             Text(
-                text = "Level: ${levels.firstOrNull { it.first.score >= game.score }?.first?.name ?: "MAX"}",
+                text = "Level: ${levels.firstOrNull { it.first.score >= gameManager.score }?.first?.name ?: "MAX"}",
                 color = Color.White,
                 style = MaterialTheme.typography.titleMedium.copy(
                     shadow = Shadow(
@@ -524,7 +525,7 @@ fun GameScreen(
                 )
             )
             Text(
-                text = "Score: ${game.score}",
+                text = "Score: ${gameManager.score}",
                 color = Color.White,
                 style = MaterialTheme.typography.titleMedium.copy(
                     shadow = Shadow(

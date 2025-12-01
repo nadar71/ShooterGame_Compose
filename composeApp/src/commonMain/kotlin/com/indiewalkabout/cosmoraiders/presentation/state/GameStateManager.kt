@@ -12,7 +12,7 @@ class GameStateManager {
 
     private val _currentState = MutableStateFlow<GameState>(GameState.MainMenu)
     val currentState: StateFlow<GameState> = _currentState.asStateFlow()
-    
+
     private var _score = 0
     private var _highScore = 0
     private var _currentLevel = 1

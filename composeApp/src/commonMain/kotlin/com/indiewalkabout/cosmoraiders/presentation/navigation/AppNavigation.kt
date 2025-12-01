@@ -9,14 +9,14 @@ import androidx.navigation.navArgument
 import com.indiewalkabout.cosmoraiders.presentation.ui.GameOverScreen
 import com.indiewalkabout.cosmoraiders.presentation.ui.GameScreen
 import com.indiewalkabout.cosmoraiders.presentation.ui.MainMenuScreen
-import com.indiewalkabout.cosmoraiders.presentation.state.GameStateManager
+import com.indiewalkabout.cosmoraiders.domain.model.GameManager
 import org.koin.compose.koinInject
 
 @Composable
 fun AppNavigation() {
     val navController = rememberNavController()
 
-    val stateManager = koinInject<GameStateManager>()
+    val gameManager = koinInject<GameManager>()
     
     NavHost(
         navController = navController,
@@ -26,7 +26,7 @@ fun AppNavigation() {
             MainMenuScreen(
                 onStartGame = {
                     println("MainMenu: Start btn pressed, starting game...")
-                    stateManager.startNewGame()
+                    gameManager.startNewGame()
                     navController.navigate(Screen.Game.route)
                 }
             )
@@ -62,14 +62,14 @@ fun AppNavigation() {
                 highScore = highScore,
                 onPlayAgain = {
                     println("GameOverScreen: Play again btn pressed, playing again...")
-                    stateManager.startNewGame()
+                    gameManager.startNewGame()
                     navController.navigate(Screen.Game.route) {
                         popUpTo(Screen.Game.route) { inclusive = true }
                     }
                 },
                 onExitToMenu = {
                     println("GameOverScreen: Exit to menu btn pressed, exiting to menu...")
-                    stateManager.showMainMenu()
+                    gameManager.showMainMenu()
                     navController.navigate(Screen.MainMenu.route) {
                         popUpTo(Screen.MainMenu.route) { inclusive = true }
                     }
