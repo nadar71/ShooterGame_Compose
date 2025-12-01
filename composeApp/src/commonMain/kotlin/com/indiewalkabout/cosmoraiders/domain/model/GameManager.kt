@@ -105,22 +105,6 @@ class GameManager(
         println("GameManager: Added $scorePoints points. New score: ${_score.value}")
     }
 
-    /*fun updateScore(newScore: Int) {
-        _score = newScore
-        println("GameManager: Score updated to: $_score")
-    }*/
-
-    /*fun updateLevel(newLevel: Int) {
-        _currentLevel = newLevel
-        println("GameManager: Level updated to: $_currentLevel")
-    }*/
-
-    /*fun resetGame() {
-        _score = 0
-        _currentLevel = 1
-        player.reset()
-        _currentState.value = GameState.MainMenu
-    }*/
 
     // Helper functions
     fun isInState(vararg states: GameState): Boolean {

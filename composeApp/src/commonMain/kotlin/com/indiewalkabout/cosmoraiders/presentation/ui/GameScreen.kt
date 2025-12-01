@@ -38,19 +38,18 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.indiewalkabout.cosmoraiders.data.local.TARGET_SPAWN_RATE
 import com.indiewalkabout.cosmoraiders.data.local.WEAPON_SIZE
 import com.indiewalkabout.cosmoraiders.data.local.WEAPON_SPAWN_RATE
+import com.indiewalkabout.cosmoraiders.data.local.enum.levels
 import com.indiewalkabout.cosmoraiders.domain.model.Bullet
-import com.indiewalkabout.cosmoraiders.util.MoveDirection
+import com.indiewalkabout.cosmoraiders.domain.model.GameManager
 import com.indiewalkabout.cosmoraiders.domain.model.audio.AudioPlayer
-import com.indiewalkabout.cosmoraiders.util.checkEnemyCollisions
 import com.indiewalkabout.cosmoraiders.domain.model.enemy.EasyEnemy
 import com.indiewalkabout.cosmoraiders.domain.model.enemy.Enemy
 import com.indiewalkabout.cosmoraiders.domain.model.enemy.MediumEnemy
 import com.indiewalkabout.cosmoraiders.domain.model.enemy.StrongEnemy
-import com.indiewalkabout.cosmoraiders.domain.model.game.Game
+import com.indiewalkabout.cosmoraiders.domain.model.player.Player
 import com.indiewalkabout.cosmoraiders.presentation.state.GameState
-import com.indiewalkabout.cosmoraiders.presentation.state.GameStateManager
-import com.indiewalkabout.cosmoraiders.data.local.enum.levels
-import com.indiewalkabout.cosmoraiders.domain.model.GameManager
+import com.indiewalkabout.cosmoraiders.util.MoveDirection
+import com.indiewalkabout.cosmoraiders.util.checkEnemyCollisions
 import com.indiewalkabout.cosmoraiders.util.detectMoveGesture
 import com.stevdza_san.sprite.component.drawSpriteView
 import com.stevdza_san.sprite.domain.SpriteFlip
@@ -68,9 +67,6 @@ import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.imageResource
 import org.jetbrains.compose.resources.painterResource
 import org.koin.compose.koinInject
-
-import com.indiewalkabout.cosmoraiders.domain.model.player.Player
-
 
 
 @Composable
@@ -153,7 +149,7 @@ fun GameScreen(
         runningPlayer.stop()
         bullets.clear()
         enemies.clear()
-        // player.reset()
+        player.reset()
         gameManager.gameOver()
     }
 
@@ -191,7 +187,6 @@ fun GameScreen(
 
             is GameState.MainMenu -> {
                 println("Main Menu state detected. Resetting game objects and go to main menu.")
-                // Handle any cleanup needed when returning to main menu
                 runningPlayer.stop()
                 bullets.clear()
                 enemies.clear()
@@ -219,6 +214,7 @@ fun GameScreen(
         }
 
         if (player.lives == 0) {
+            println("GameScreen: player lives 0, game over")
             GameOver()
         }
     }
