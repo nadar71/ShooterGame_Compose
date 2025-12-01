@@ -85,8 +85,9 @@ fun GameScreen(
     val gameManager = koinInject<GameManager>()
     val player = gameManager.player
 
-    // Collect the game state once
+    // Collect the game state and score as State
     val currentState by gameManager.currentState.collectAsStateWithLifecycle()
+    val currentScore by gameManager.score.collectAsStateWithLifecycle()
 
     // Track game objects and UI state
     val bullets = remember { mutableStateListOf<Bullet>() }
@@ -338,7 +339,7 @@ fun GameScreen(
                 runningPlayer.stop()
                 if (currentState is GameState.GameOver) {
                     gameManager.gameOver()
-                    onGameOver(gameManager.score, gameManager.highScore)
+                    onGameOver(gameManager.score.value, gameManager.highScore)
                 }
             }
             is GameState.Playing -> {
@@ -514,7 +515,8 @@ fun GameScreen(
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
             Text(
-                text = "Level: ${levels.firstOrNull { it.first.score >= gameManager.score }?.first?.name ?: "MAX"}",
+                text = "Level: ${levels.firstOrNull { 
+                    it.first.score >= gameManager.score.value }?.first?.name ?: "MAX"}",
                 color = Color.White,
                 style = MaterialTheme.typography.titleMedium.copy(
                     shadow = Shadow(
@@ -525,7 +527,7 @@ fun GameScreen(
                 )
             )
             Text(
-                text = "Score: ${gameManager.score}",
+                text = "Score: $currentScore",
                 color = Color.White,
                 style = MaterialTheme.typography.titleMedium.copy(
                     shadow = Shadow(

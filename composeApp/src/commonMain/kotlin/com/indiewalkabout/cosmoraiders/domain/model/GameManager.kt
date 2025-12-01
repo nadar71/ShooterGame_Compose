@@ -24,14 +24,18 @@ class GameManager(
     val currentState: StateFlow<GameState> = _currentState.asStateFlow()
     
     // Game data
-    private var _score = initialScore
+    private val _score = MutableStateFlow(initialScore)
+    val score: StateFlow<Int> = _score.asStateFlow()
+    
     private var _highScore = initialHighScore
     private var _currentLevel = initialLevel
 
     // Public getters
-    val score: Int get() = _score
     val highScore: Int get() = _highScore
     val currentLevel: Int get() = _currentLevel
+    
+    // Backing property to access the current score value internally
+    private val currentScore: Int get() = _score.value
 
     init {
         // Load saved high score from persistence (to be implemented)
@@ -40,9 +44,16 @@ class GameManager(
 
     // Game state management methods
     fun startNewGame() {
-        _score = 0
+        _score.value = 0
         _currentLevel = 1
         _currentState.value = GameState.Playing
+    }
+
+    fun resetGame() {
+        _score.value = 0
+        _currentLevel = 1
+        player.reset()
+        _currentState.value = GameState.MainMenu
     }
 
     fun pauseGame() {
@@ -58,20 +69,20 @@ class GameManager(
     }
 
     fun completeLevel() {
-        _currentState.value = GameState.LevelComplete(_currentLevel, _score)
+        _currentState.value = GameState.LevelComplete(_currentLevel, _score.value)
         _currentLevel++
         println("GameManager: Level updated to: $_currentLevel")
     }
 
     fun gameOver() {
-        if (_score > _highScore) {
-            _highScore = _score
+        if (_score.value > _highScore) {
+            _highScore = _score.value
             // saveHighScore(_highScore) // To be implemented with data persistence
         }
-        println("GameManager: Game Over. Score: $_score, High Score: $_highScore")
-        
+        println("GameManager: Publishing GameOver state. Score: ${_score.value}, High Score: $_highScore")
+        // Ensure we're on the main thread when updating the state
         CoroutineScope(Dispatchers.Main).launch {
-            _currentState.emit(GameState.GameOver(_score, _highScore))
+            _currentState.emit(GameState.GameOver(_score.value, _highScore))
         }
     }
 
@@ -90,8 +101,8 @@ class GameManager(
 
     // Game data manipulation
     fun addScore(scorePoints: Int) {
-        _score += scorePoints
-        println("GameManager: Added $scorePoints points. New score: $_score")
+        _score.value += scorePoints
+        println("GameManager: Added $scorePoints points. New score: ${_score.value}")
     }
 
     /*fun updateScore(newScore: Int) {
@@ -104,12 +115,12 @@ class GameManager(
         println("GameManager: Level updated to: $_currentLevel")
     }*/
 
-    fun resetGame() {
+    /*fun resetGame() {
         _score = 0
         _currentLevel = 1
         player.reset()
         _currentState.value = GameState.MainMenu
-    }
+    }*/
 
     // Helper functions
     fun isInState(vararg states: GameState): Boolean {
@@ -130,7 +141,7 @@ class GameManager(
 
     // Creates a copy of the current game state with updated values
     fun copy(
-        score: Int = this._score,
+        score: Int = this._score.value,
         level: Int = this._currentLevel,
         highScore: Int = this._highScore,
         player: Player = this.player,
