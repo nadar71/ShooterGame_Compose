@@ -1,4 +1,4 @@
-package com.indiewalkabout.cosmoraiders
+package com.indiewalkabout.cosmoraiders.presentation.ui
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -9,9 +9,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.sp
-import com.indiewalkabout.cosmoraiders.domain.game.Game
-import com.indiewalkabout.cosmoraiders.domain.game.GameStateManager
-import org.koin.compose.koinInject
 
 @Composable
 fun MainMenuScreen(

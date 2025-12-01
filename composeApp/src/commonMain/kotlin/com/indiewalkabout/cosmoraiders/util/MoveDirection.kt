@@ -1,4 +1,4 @@
-package com.indiewalkabout.cosmoraiders.domain
+package com.indiewalkabout.cosmoraiders.util
 
 enum class MoveDirection {
     Left,

@@ -1,6 +1,7 @@
-package com.indiewalkabout.cosmoraiders.domain.game
+package com.indiewalkabout.cosmoraiders.domain.model.game
 
-import com.indiewalkabout.cosmoraiders.domain.player.Player
+import com.indiewalkabout.cosmoraiders.domain.model.player.Player
+import com.indiewalkabout.cosmoraiders.presentation.state.GameStateManager
 
 // Represents the main game instance with all game-related data.
 data class Game(
@@ -12,6 +13,7 @@ data class Game(
 ) {
     // Creates a new game with default settings
     fun newGame(): Game {
+        println("Game: Creating new game")
         return copy(
             score = 0,
             level = 1,
@@ -27,35 +29,20 @@ data class Game(
 
     // Updates game score and level
     fun updateScore(score: Int = this.score): Game {
+        println("Game: Updating score to: $score")
         return copy(score = score)
     }
 
     // Updates game score and level
     fun updateLevel(level: Int = this.level): Game {
+        println("Game: Updating level to: $level")
         return copy(level = level)
     }
     
-    // Decreases player's lives and returns true if game over
+    /*// Decreases player's lives and returns true if game over
     fun decreaseLives(amount: Int = 1): Game {
         player.decreaseLives(amount)
         return copy() // Return new instance with updated player state
-    }
-}
-
-// Contains all the game settings that affect gameplay.
-data class GameSettings(
-    val playerSpeed: Float = 15f,
-    val weaponSpeed: Float = 20f,
-    val targetSpeed: Float = 30f,
-    val soundEnabled: Boolean = true,
-    val musicEnabled: Boolean = true,
-    val difficulty: Difficulty = Difficulty.NORMAL
-)
-
-// Represents different difficulty levels
-enum class Difficulty(val multiplier: Float) {
-    EASY(0.7f),
-    NORMAL(1.0f),
-    HARD(1.5f)
+    }*/
 }
 

@@ -1,4 +1,4 @@
-package com.indiewalkabout.cosmoraiders
+package com.indiewalkabout.cosmoraiders.presentation.ui
 
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.tween
@@ -35,18 +35,21 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.indiewalkabout.cosmoraiders.domain.Bullet
-import com.indiewalkabout.cosmoraiders.domain.MoveDirection
-import com.indiewalkabout.cosmoraiders.domain.audio.AudioPlayer
-import com.indiewalkabout.cosmoraiders.domain.checkEnemyCollisions
-import com.indiewalkabout.cosmoraiders.domain.enemy.EasyEnemy
-import com.indiewalkabout.cosmoraiders.domain.enemy.Enemy
-import com.indiewalkabout.cosmoraiders.domain.enemy.MediumEnemy
-import com.indiewalkabout.cosmoraiders.domain.enemy.StrongEnemy
-import com.indiewalkabout.cosmoraiders.domain.game.Game
-import com.indiewalkabout.cosmoraiders.domain.game.GameState
-import com.indiewalkabout.cosmoraiders.domain.game.GameStateManager
-import com.indiewalkabout.cosmoraiders.domain.game.levels
+import com.indiewalkabout.cosmoraiders.data.local.TARGET_SPAWN_RATE
+import com.indiewalkabout.cosmoraiders.data.local.WEAPON_SIZE
+import com.indiewalkabout.cosmoraiders.data.local.WEAPON_SPAWN_RATE
+import com.indiewalkabout.cosmoraiders.domain.model.Bullet
+import com.indiewalkabout.cosmoraiders.util.MoveDirection
+import com.indiewalkabout.cosmoraiders.domain.model.audio.AudioPlayer
+import com.indiewalkabout.cosmoraiders.util.checkEnemyCollisions
+import com.indiewalkabout.cosmoraiders.domain.model.enemy.EasyEnemy
+import com.indiewalkabout.cosmoraiders.domain.model.enemy.Enemy
+import com.indiewalkabout.cosmoraiders.domain.model.enemy.MediumEnemy
+import com.indiewalkabout.cosmoraiders.domain.model.enemy.StrongEnemy
+import com.indiewalkabout.cosmoraiders.domain.model.game.Game
+import com.indiewalkabout.cosmoraiders.presentation.state.GameState
+import com.indiewalkabout.cosmoraiders.presentation.state.GameStateManager
+import com.indiewalkabout.cosmoraiders.data.local.enum.levels
 import com.indiewalkabout.cosmoraiders.util.detectMoveGesture
 import com.stevdza_san.sprite.component.drawSpriteView
 import com.stevdza_san.sprite.domain.SpriteFlip
@@ -65,14 +68,9 @@ import org.jetbrains.compose.resources.imageResource
 import org.jetbrains.compose.resources.painterResource
 import org.koin.compose.koinInject
 
-import com.indiewalkabout.cosmoraiders.domain.player.Player
+import com.indiewalkabout.cosmoraiders.domain.model.player.Player
 
-// Game constants
-const val PLAYER_LIVES = 3
-const val WEAPON_SPAWN_RATE = 150L
-const val WEAPON_SIZE = 32f
-const val TARGET_SPAWN_RATE = 1500L
-const val TARGET_SIZE = 40f
+
 
 @Composable
 fun GameScreen(
@@ -101,7 +99,7 @@ fun GameScreen(
     var screenWidth by remember { mutableStateOf(0) }
     var screenHeight by remember { mutableStateOf(0) }
 
-    // --- player stuff ---
+    // --- Player stuff ---
     val runningPlayer = rememberSpriteState(
         totalFrames = 9,
         framesPerRow = 3,
@@ -247,32 +245,29 @@ fun GameScreen(
             val randomX = (0..screenWidth).random()
             val isEven = (randomX % 2 == 0)
             if (isEven) {
-                enemies.add(
-                    MediumEnemy(
-                        x = randomX.toFloat(),
-                        y = Animatable(0f),
-                        radius = TARGET_SIZE,
-                        fallingSpeed = game.settings.targetSpeed
-                    )
+                val mediumEnemy = MediumEnemy(
+                    scope = scope,
+                    x = randomX.toFloat(),
+                    y = Animatable(0f),
+                    fallingSpeed = game.settings.targetSpeed
                 )
+                enemies.add(mediumEnemy)
             } else if (randomX > screenWidth * 0.75) {
-                enemies.add(
-                    StrongEnemy(
-                        x = randomX.toFloat(),
-                        y = Animatable(0f),
-                        radius = TARGET_SIZE,
-                        fallingSpeed = game.settings.targetSpeed * 0.25f
-                    )
+                val strongEnemy = StrongEnemy(
+                    scope = scope,
+                    x = randomX.toFloat(),
+                    y = Animatable(0f),
+                    fallingSpeed = game.settings.targetSpeed * 0.25f
                 )
+                enemies.add(strongEnemy)
             } else {
-                enemies.add(
-                    EasyEnemy(
-                        x = randomX.toFloat(),
-                        y = Animatable(0f),
-                        radius = TARGET_SIZE,
-                        fallingSpeed = game.settings.targetSpeed
-                    )
+                val easyEnemy = EasyEnemy(
+                    scope = scope,
+                    x = randomX.toFloat(),
+                    y = Animatable(0f),
+                    fallingSpeed = game.settings.targetSpeed
                 )
+                enemies.add(easyEnemy)
             }
         }
     }
@@ -297,8 +292,11 @@ fun GameScreen(
                     player = player,
                     bullets = bullets,
                     enemies = enemies,
-                    onCollision = { _, points ->
-                        game.updateScore(score = game.score + points)
+                    onCollision = { enemy, scorePoints ->
+                        if (enemy.lives <= 0) {
+                            enemy.destroy()
+                        }
+                        game.updateScore(score = game.score + scorePoints)
                     },
                     onSoundPlay = { index -> audio.playSound(index) }
                 )
@@ -310,20 +308,16 @@ fun GameScreen(
                 )
 
                 // Check if enemy went off-screen
-                val enemiesToRemove = mutableListOf<Enemy>()
                 enemies.forEach { enemy ->
-                    if ((enemy.y.value ?: 0f) > screenHeight) {
+                    if ((enemy.y.value) > screenHeight/2) {
                         println("Enemy went off-screen: $enemy")
-                        // fallenEnemies++
                         isEnemyAtBottom = true
-                        // enemies.remove(enemy)
-                        enemiesToRemove.add(enemy)
+                        enemy.destroy()
                     }
                 }
-                enemiesToRemove.forEach { enemy ->
-                    enemies.remove(enemy)
-                }
 
+                // Remove destroyed enemies
+                enemies.removeAll { it.isDestroyed }
             }
         }
     }

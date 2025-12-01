@@ -1,4 +1,4 @@
-package com.indiewalkabout.cosmoraiders.navigation
+package com.indiewalkabout.cosmoraiders.presentation.navigation
 
 sealed class Screen(val route: String) {
     object MainMenu : Screen("main_menu")

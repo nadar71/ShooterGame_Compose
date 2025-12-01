@@ -1,7 +1,7 @@
 package com.indiewalkabout.cosmoraiders.util
 
 import androidx.compose.ui.input.pointer.AwaitPointerEventScope
-import com.indiewalkabout.cosmoraiders.domain.game.GameState
+import com.indiewalkabout.cosmoraiders.presentation.state.GameState
 
 
 // Detects horizontal swipe gestures and calls the appropriate callbacks.

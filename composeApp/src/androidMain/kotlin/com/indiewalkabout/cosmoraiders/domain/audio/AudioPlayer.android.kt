@@ -3,6 +3,7 @@ package com.indiewalkabout.cosmoraiders.domain.audio
 import android.content.Context
 import androidx.media3.common.MediaItem
 import androidx.media3.exoplayer.ExoPlayer
+import com.indiewalkabout.cosmoraiders.domain.model.audio.soundResList
 import cosmoraiders.composeapp.generated.resources.Res
 import org.jetbrains.compose.resources.ExperimentalResourceApi
 

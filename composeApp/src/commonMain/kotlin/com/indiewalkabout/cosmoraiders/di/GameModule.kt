@@ -1,11 +1,10 @@
 package com.indiewalkabout.cosmoraiders.di
 
-import com.indiewalkabout.cosmoraiders.PLAYER_LIVES
-import com.indiewalkabout.cosmoraiders.domain.game.Difficulty
-import com.indiewalkabout.cosmoraiders.domain.game.Game
-import com.indiewalkabout.cosmoraiders.domain.game.GameSettings
-import com.indiewalkabout.cosmoraiders.domain.game.GameStateManager
-import com.indiewalkabout.cosmoraiders.domain.player.Player
+import com.indiewalkabout.cosmoraiders.data.local.enum.DifficultyLevel
+import com.indiewalkabout.cosmoraiders.domain.model.game.Game
+import com.indiewalkabout.cosmoraiders.domain.model.game.GameSettings
+import com.indiewalkabout.cosmoraiders.presentation.state.GameStateManager
+import com.indiewalkabout.cosmoraiders.domain.model.player.Player
 import org.koin.dsl.module
 
 val gameModule = module {
@@ -20,7 +19,7 @@ val gameModule = module {
             targetSpeed = 30f,
             soundEnabled = true,
             musicEnabled = true,
-            difficulty = Difficulty.NORMAL
+            difficultyLevel = DifficultyLevel.NORMAL
         )
     }
     

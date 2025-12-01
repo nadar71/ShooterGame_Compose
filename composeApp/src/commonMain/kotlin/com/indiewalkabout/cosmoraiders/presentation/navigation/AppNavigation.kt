@@ -1,4 +1,4 @@
-package com.indiewalkabout.cosmoraiders.navigation
+package com.indiewalkabout.cosmoraiders.presentation.navigation
 
 import androidx.compose.runtime.Composable
 import androidx.navigation.NavType
@@ -6,10 +6,10 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
-import com.indiewalkabout.cosmoraiders.GameOverScreen
-import com.indiewalkabout.cosmoraiders.GameScreen
-import com.indiewalkabout.cosmoraiders.MainMenuScreen
-import com.indiewalkabout.cosmoraiders.domain.game.GameStateManager
+import com.indiewalkabout.cosmoraiders.presentation.ui.GameOverScreen
+import com.indiewalkabout.cosmoraiders.presentation.ui.GameScreen
+import com.indiewalkabout.cosmoraiders.presentation.ui.MainMenuScreen
+import com.indiewalkabout.cosmoraiders.presentation.state.GameStateManager
 import org.koin.compose.koinInject
 
 @Composable

@@ -1,4 +1,6 @@
-package com.indiewalkabout.cosmoraiders.domain.game
+package com.indiewalkabout.cosmoraiders.data.local.enum
+
+import com.indiewalkabout.cosmoraiders.domain.model.game.GameSettings
 
 // Represents game levels with their target scores
 enum class GameLevel(val score: Int) {

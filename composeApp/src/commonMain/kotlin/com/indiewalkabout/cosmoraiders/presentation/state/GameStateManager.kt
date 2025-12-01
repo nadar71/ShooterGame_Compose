@@ -1,4 +1,4 @@
-package com.indiewalkabout.cosmoraiders.domain.game
+package com.indiewalkabout.cosmoraiders.presentation.state
 
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers

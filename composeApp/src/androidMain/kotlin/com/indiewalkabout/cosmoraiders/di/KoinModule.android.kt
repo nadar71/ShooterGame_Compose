@@ -1,7 +1,7 @@
 package com.indiewalkabout.cosmoraiders.di
 
 import android.content.Context
-import com.indiewalkabout.cosmoraiders.domain.audio.AudioPlayer
+import com.indiewalkabout.cosmoraiders.domain.model.audio.AudioPlayer
 import org.jetbrains.compose.resources.ExperimentalResourceApi
 import org.koin.android.ext.koin.androidContext
 import org.koin.core.qualifier.named

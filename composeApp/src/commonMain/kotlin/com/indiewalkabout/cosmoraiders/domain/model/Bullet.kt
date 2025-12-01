@@ -1,4 +1,4 @@
-package com.indiewalkabout.cosmoraiders.domain
+package com.indiewalkabout.cosmoraiders.domain.model
 
 data class Bullet(
     val x: Float = 0f,

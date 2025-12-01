@@ -1,6 +1,6 @@
 package com.indiewalkabout.cosmoraiders.di
 
-import com.indiewalkabout.cosmoraiders.domain.audio.AudioPlayer
+import com.indiewalkabout.cosmoraiders.domain.model.audio.AudioPlayer
 import org.koin.dsl.module
 
 
